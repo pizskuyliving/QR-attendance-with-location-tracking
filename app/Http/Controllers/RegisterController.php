@@ -23,10 +23,19 @@ class RegisterController extends Controller
 
     private const MAKS_PERCOBAAN = 5;
 
+    /** Pendaftaran ditutup laboran dari menu Sistem. */
+    public static function ditutup(string $siapa = 'mahasiswa')
+    {
+        return redirect()->route($siapa === 'asisten' ? 'asisten.login' : 'login')->withErrors(['email' => "Pendaftaran akun {$siapa} sedang ditutup. Hubungi laboran."]);
+    }
+
     public function form()
     {
         if (Auth::guard('mahasiswa')->check()) {
             return redirect()->route('mhs.home');
+        }
+        if (! config('absen.daftar_mahasiswa')) {
+            return self::ditutup();
         }
 
         return view('auth.daftar', ['daftarKelas' => config('absen.kelas')]);
@@ -34,6 +43,9 @@ class RegisterController extends Controller
 
     public function store(Request $request)
     {
+        if (! config('absen.daftar_mahasiswa')) {
+            return self::ditutup();
+        }
         $data = $request->validate([
             'npm' => ['required', 'regex:/^[0-9]{6,20}$/'],
             'kelas' => ['required', Rule::in(config('absen.kelas'))],

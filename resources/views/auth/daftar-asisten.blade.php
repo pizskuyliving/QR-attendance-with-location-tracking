@@ -3,9 +3,9 @@
 @section('body')
 <div class="auth">
     <div class="card" style="max-width:460px">
-        <img class="logo" src="/icons/icon-192.png" alt="">
+        @include('layouts.logo', ['logoKelas' => 'logo'])
         <h1 class="center">Daftar Akun Asisten</h1>
-        <p class="center muted">Akun baru bisa dipakai setelah <b>disetujui admin</b>.</p>
+        <p class="center muted">Akun baru bisa dipakai setelah <b>disetujui laboran</b>.</p>
         @include('layouts.flash')
         <form method="post" action="{{ route('asisten.daftar') }}" novalidate>
             @csrf
@@ -20,7 +20,7 @@
             <div class="field">
                 <label for="keterangan">Mata kuliah yang diampu</label>
                 <input id="keterangan" name="keterangan" value="{{ old('keterangan') }}" placeholder="contoh: Basis Data kelas A dan B" required>
-                <div class="small muted" style="margin-top:4px">Membantu admin memastikan kamu memang asisten.</div>
+                <div class="small muted" style="margin-top:4px">Membantu laboran memastikan kamu memang asisten.</div>
             </div>
             <div class="field">
                 <label for="password">Kata sandi</label>

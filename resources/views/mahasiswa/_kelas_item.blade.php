@@ -4,7 +4,7 @@
         <div style="min-width:0">
             <div class="eyebrow">Kelas {{ $k->nama_kelas }}@if ($k->hari) · {{ $k->hari }}@endif</div>
             <div class="mk-title">{{ $k->mata_kuliah }}</div>
-            <div class="meta">{{ $k->asisten->name }}@if ($k->ruang) · {{ $k->ruang }}@endif</div>
+            <div class="meta">{{ $k->namaAsisten() }}@if ($k->ruang) · {{ $k->ruang }}@endif</div>
         </div>
         @if ($ikut)<span class="badge H">Diikuti</span>@endif
     </div>

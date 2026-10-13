@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Absensi;
+use App\Models\Kelas;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -36,7 +37,7 @@ class ExportExcel
         if ($jenis === 'lengkap') {
             self::lembarPertemuan($book->createSheet(), $rekap);
             self::lembarRiwayatScan($book->createSheet(), $rekap);
-            if ($kelas->tugas()->exists()) {
+            if ($kelas->tugas()->exists() || $kelas->bobot_uts || $kelas->bobot_uas) {
                 self::lembarNilai($book->createSheet(), new RekapNilai($rekap));
             }
         }
@@ -45,7 +46,7 @@ class ExportExcel
         return $book;
     }
 
-    private static function lembarRekap(Worksheet $ws, Rekap $rekap, string $jenis): void
+    public static function lembarRekap(Worksheet $ws, Rekap $rekap, string $jenis): void
     {
         $kelas = $rekap->kelas;
         $n = $kelas->jumlah_pertemuan;
@@ -68,7 +69,7 @@ class ExportExcel
         $info = [
             ['Mata Kuliah', $kelas->mata_kuliah],
             ['Kelas', $kelas->nama_kelas],
-            ['Asisten', $kelas->asisten->name],
+            ['Asisten', $kelas->namaAsisten()],
             ['Dicetak', now()->translatedFormat('d F Y H:i')],
         ];
         foreach ($info as $i => [$k, $v]) {
@@ -131,9 +132,7 @@ class ExportExcel
         $ws->setCellValue("A{$keterangan}", 'Keterangan: '.collect(Absensi::STATUS)->map(fn ($v, $k) => "$k = $v")->implode(', '));
         $ws->getStyle("A{$keterangan}")->getFont()->setItalic(true)->setSize(9);
 
-        $ws->setCellValue('C'.($keterangan + 2), 'Asisten,');
-        $ws->setCellValue('C'.($keterangan + 6), $kelas->asisten->name);
-        $ws->getStyle('C'.($keterangan + 6))->getFont()->setBold(true)->setUnderline(true);
+        self::tandaTangan($ws, $kelas, $keterangan + 2, count($judul));
 
         $ws->freezePane('D'.($r0 + 1));
         $setup = $ws->getPageSetup();
@@ -142,6 +141,53 @@ class ExportExcel
         $setup->setRowsToRepeatAtTopByStartAndEnd($r0, $r0);
         $setup->setPrintArea('A1:'.$kolomAkhir.($keterangan + 6));
         $ws->getPageMargins()->setTop(0.5)->setBottom(0.5)->setLeft(0.4)->setRight(0.4);
+    }
+
+    /**
+     * Blok tanda tangan sejajar: dosen pengampu di kolom C, lalu tiap asisten pengajar
+     * di sisa kolom (dibagi rata, digabung, rata tengah). Nama kosong diberi garis titik.
+     */
+    private static function tandaTangan(Worksheet $ws, Kelas $kelas, int $baris, int $jumlahKolom): void
+    {
+        $blok = [];
+        if ($kelas->matkul_id && $kelas->matkul?->dosen) {
+            $blok[] = ['Dosen Pengampu,', $kelas->matkul->dosen->name];
+        }
+        $asisten = $kelas->daftarAsisten();
+        foreach ($asisten as $i => $a) {
+            $blok[] = [$asisten->count() > 1 ? 'Asisten '.($i + 1).',' : 'Asisten,', $a->name];
+        }
+        if ($asisten->isEmpty()) {
+            $blok[] = ['Asisten,', null];
+        }
+
+        // kolom C untuk blok pertama; blok lain berbagi kolom D s.d. kolom terakhir
+        $rentang = [['C', 'C']];
+        $sisa = count($blok) - 1;
+        if ($sisa > 0) {
+            $lebar = intdiv($jumlahKolom - 3, $sisa);
+            for ($i = 0; $i < $sisa; $i++) {
+                $dari = 4 + $i * $lebar;
+                $sampai = $i === $sisa - 1 ? $jumlahKolom : $dari + $lebar - 1;
+                $rentang[] = [Coordinate::stringFromColumnIndex($dari), Coordinate::stringFromColumnIndex($sampai)];
+            }
+        }
+
+        $nama = $baris + 4;
+        foreach ($blok as $i => [$label, $orang]) {
+            [$a, $b] = $rentang[$i];
+            foreach ([$baris, $nama] as $r) {
+                if ($a !== $b) {
+                    $ws->mergeCells("{$a}{$r}:{$b}{$r}");
+                }
+                $ws->getStyle("{$a}{$r}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setShrinkToFit(true);
+            }
+            $ws->setCellValue("{$a}{$baris}", $label);
+            $ws->setCellValue("{$a}{$nama}", $orang ? self::teks($orang) : '(..............................)');
+            if ($orang) {
+                $ws->getStyle("{$a}{$nama}")->getFont()->setBold(true)->setUnderline(true);
+            }
+        }
     }
 
     private static function lembarPertemuan(Worksheet $ws, Rekap $rekap): void
@@ -192,12 +238,12 @@ class ExportExcel
         $kelas = $nilai->rekap->kelas;
         $ws->setTitle('Rekap Nilai');
         $ws->setCellValue('A1', 'REKAP NILAI '.mb_strtoupper($kelas->label()));
-        $ws->setCellValue('A2', "Bobot: kehadiran {$kelas->bobot_hadir}% · tugas {$kelas->bobot_tugas}%. Tugas yang lewat tenggat tanpa kiriman = 0; kiriman belum dinilai belum dihitung.");
+        $ws->setCellValue('A2', "Bobot: kehadiran {$kelas->bobot_hadir}% · tugas {$kelas->bobot_tugas}% · UTS {$kelas->bobot_uts}% · UAS {$kelas->bobot_uas}%. Tugas yang lewat tenggat tanpa kiriman = 0; kiriman belum dinilai belum dihitung.");
         $judul = ['No', 'NPM', 'Nama', 'Hadir (%)'];
         foreach ($nilai->tugas as $t) {
             $judul[] = "P{$t->pertemuan} ".$t->judul;
         }
-        array_push($judul, 'Rata-rata tugas', 'Nilai akhir', 'Huruf');
+        array_push($judul, 'Rata-rata tugas', 'UTS', 'UAS', 'Nilai akhir', 'Huruf');
         $ws->fromArray($judul, null, 'A4');
         $r = 5;
         foreach ($nilai->baris as $i => $b) {
@@ -205,7 +251,7 @@ class ExportExcel
             foreach ($nilai->tugas as $t) {
                 $isi[] = $b['tugas'][$t->id] ?? (isset($b['kiriman'][$t->id]) ? 'belum dinilai' : '-');
             }
-            array_push($isi, $b['rata_tugas'] ?? '-', $b['akhir'] ?? '-', $b['huruf'] ?? '-');
+            array_push($isi, $b['rata_tugas'] ?? '-', $b['uts'] ?? '-', $b['uas'] ?? '-', $b['akhir'] ?? '-', $b['huruf'] ?? '-');
             $ws->fromArray($isi, self::TANPA_NULL, "A{$r}");
             $ws->setCellValueExplicit("B{$r}", $b['mahasiswa']->npm, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $r++;
@@ -233,7 +279,7 @@ class ExportExcel
     }
 
     /** Cegah teks diawali =, +, - atau @ dibaca Excel sebagai rumus (formula injection). */
-    private static function teks(?string $v): string
+    public static function teks(?string $v): string
     {
         $v = (string) $v;
 

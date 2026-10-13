@@ -10,13 +10,12 @@
                 <p class="muted">Hubungi asisten dosen kelasmu. Asisten bisa membuat kata sandi sementara dari menu <b>Mahasiswa</b> di kelas. Setelah masuk, segera ganti di menu <b>Akun</b>.</p>
             </div>
             <div>
-                <h3>Asisten dosen</h3>
-                <p class="muted">Hubungi admin sistem. Admin dapat mengganti kata sandi akun asisten dari menu <b>Profil &rsaquo; Kelola Akun Asisten</b>.</p>
+                <h3>Asisten dosen &amp; dosen</h3>
+                <p class="muted">Hubungi laboran. Laboran dapat mengganti kata sandi dari menu <b>Akun</b>.</p>
             </div>
         </div>
         <div class="row" style="margin-top:12px">
-            <a class="btn ghost" href="{{ route('login') }}">Login mahasiswa</a>
-            <a class="btn ghost" href="{{ route('asisten.login') }}">Login asisten</a>
+            <a class="btn ghost" href="{{ route('login') }}">&larr; Kembali ke halaman masuk</a>
         </div>
     </div>
     @include('layouts.footer', ['ringkas' => true])

@@ -11,7 +11,7 @@
 @section('body')
 <div class="mhs-shell">
     <aside class="mhs-side">
-        <a class="mhs-brand" href="{{ route('mhs.home') }}"><img src="/icons/icon-192.png" alt=""><span>FLEX<small>Flexible Learning Experience</small></span></a>
+        <a class="mhs-brand" href="{{ route('mhs.home') }}">@include('layouts.logo', ['logoKelas' => ''])<span>FLEX<small>Flexible Learning Experience</small></span></a>
         <a class="btn accent block" href="{{ route('mhs.scan') }}">{!! $ik('scan') !!}Scan QR Absen</a>
         <nav>
             @foreach ($menu as [$r, $label, $i, $aktif])

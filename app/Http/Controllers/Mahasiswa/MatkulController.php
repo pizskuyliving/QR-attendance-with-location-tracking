@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Asisten\MateriController;
+use App\Http\Controllers\Asisten\SoalUjianController;
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\Materi;
+use App\Models\SoalUjian;
 use App\Models\Pengumpulan;
 use App\Models\Tugas;
 use Illuminate\Http\Request;
@@ -28,8 +30,11 @@ class MatkulController extends Controller
         $tugas = $kelas->tugas()->get()->groupBy('pertemuan');
         $kiriman = Pengumpulan::where('mahasiswa_id', $mhs->id)->whereIn('tugas_id', $kelas->tugas()->pluck('id'))->get()->keyBy('tugas_id');
         $absen = $mhs->absensi()->where('kelas_id', $kelas->id)->get()->keyBy('pertemuan');
+        $soal = $kelas->soalUjian()->where('tampil_mahasiswa', true)->get();
+        $jawaban = $kelas->jawabanUjian()->where('mahasiswa_id', $mhs->id)->get()->keyBy('jenis');
+        $pivot = $kelas->mahasiswa()->whereKey($mhs->id)->first()->pivot;
 
-        return view('mahasiswa.matkul', compact('kelas', 'materi', 'tugas', 'kiriman', 'absen'));
+        return view('mahasiswa.matkul', compact('kelas', 'materi', 'tugas', 'kiriman', 'absen', 'soal', 'jawaban', 'pivot'));
     }
 
     public function unduhMateri(Request $request, Materi $materi)
@@ -37,6 +42,78 @@ class MatkulController extends Controller
         $this->pastikanIkut($request, $materi->kelas);
 
         return MateriController::kirim($materi);
+    }
+
+    public function unduhSoal(Request $request, SoalUjian $soal)
+    {
+        $this->pastikanIkut($request, $soal->kelas);
+        abort_unless($soal->tampil_mahasiswa, 404);
+
+        return SoalUjianController::kirim($soal);
+    }
+
+    /** Halaman UTS/UAS: soal yang dibagikan, unggah jawaban, nilai. */
+    public function ujian(Request $request, Kelas $kelas, string $jenis)
+    {
+        $this->pastikanIkut($request, $kelas);
+        $mhs = $request->user('mahasiswa');
+
+        return view('mahasiswa.ujian', [
+            'kelas' => $kelas,
+            'jenis' => $jenis,
+            'label' => SoalUjian::JENIS[$jenis],
+            'soal' => $kelas->soalUjian()->where('jenis', $jenis)->where('tampil_mahasiswa', true)->get(),
+            'jawaban' => $kelas->jawabanUjian()->where('jenis', $jenis)->where('mahasiswa_id', $mhs->id)->first(),
+            'nilai' => $kelas->mahasiswa()->whereKey($mhs->id)->first()->pivot->{'nilai_'.$jenis},
+        ]);
+    }
+
+    public function kumpulUjian(Request $request, Kelas $kelas, string $jenis)
+    {
+        $this->pastikanIkut($request, $kelas);
+        $mhs = $request->user('mahasiswa');
+        $label = SoalUjian::JENIS[$jenis];
+        if (! $kelas->bukaJawaban($jenis)) {
+            return back()->withErrors(['file' => "Pengumpulan jawaban {$label} sedang ditutup."]);
+        }
+        if ($kelas->mahasiswa()->whereKey($mhs->id)->first()->pivot->{'nilai_'.$jenis} !== null) {
+            return back()->withErrors(['file' => "Jawaban {$label} sudah dinilai, file tidak bisa diganti. Hubungi asisten bila perlu."]);
+        }
+        $request->validate([
+            'file' => ['required', 'file', 'max:'.config('absen.maks_unggah_kb'), 'extensions:'.implode(',', config('absen.ekstensi_tugas'))],
+            'catatan' => 'nullable|string|max:500',
+        ], [
+            'file.extensions' => 'Jenis file tidak didukung. Gunakan: '.implode(', ', config('absen.ekstensi_tugas')).'.',
+            'file.max' => 'Ukuran file maksimal '.round(config('absen.maks_unggah_kb') / 1024).' MB.',
+            'file.uploaded' => 'File gagal diunggah, kemungkinan terlalu besar.',
+        ]);
+
+        $f = $request->file('file');
+        $lama = $kelas->jawabanUjian()->where('jenis', $jenis)->where('mahasiswa_id', $mhs->id)->first();
+        $data = [
+            'path' => $f->storeAs("ujian/{$kelas->id}/{$jenis}", $mhs->npm.'-'.Str::uuid()), // tanpa ekstensi, nama asli di nama_file
+            'nama_file' => $f->getClientOriginalName(),
+            'ukuran' => $f->getSize(),
+            'catatan' => $request->catatan,
+            'dikumpulkan_at' => now(),
+        ];
+        if ($lama) {
+            Storage::delete($lama->path); // ganti file lama
+            $lama->update($data);
+        } else {
+            $kelas->jawabanUjian()->create($data + ['jenis' => $jenis, 'mahasiswa_id' => $mhs->id]);
+        }
+
+        return back()->with('ok', "Jawaban {$label} berhasil dikirim.");
+    }
+
+    public function unduhJawaban(Request $request, Kelas $kelas, string $jenis)
+    {
+        $this->pastikanIkut($request, $kelas);
+        $j = $kelas->jawabanUjian()->where('jenis', $jenis)->where('mahasiswa_id', $request->user('mahasiswa')->id)->firstOrFail();
+        abort_unless(Storage::exists($j->path), 404);
+
+        return Storage::download($j->path, $j->nama_file);
     }
 
     public function tugas(Request $request, Tugas $tugas)

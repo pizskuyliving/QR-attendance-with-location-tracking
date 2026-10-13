@@ -13,12 +13,7 @@ class ProfilController extends Controller
 {
     public function show(Request $request)
     {
-        $admin = $request->user()->role === 'admin';
-        $asisten = $admin ? User::withCount('kelas')->where('status', 'aktif')->orderBy('name')->get() : collect();
-        $menunggu = $admin ? User::where('status', 'menunggu')->oldest()->get() : collect();
-        $ditolak = $admin ? User::where('status', 'ditolak')->latest('updated_at')->get() : collect();
-
-        return view('asisten.profil', ['user' => $request->user()] + compact('asisten', 'menunggu', 'ditolak'));
+        return view('asisten.profil', ['user' => $request->user()]);
     }
 
     public function update(Request $request)
@@ -32,7 +27,7 @@ class ProfilController extends Controller
         return back()->with('ok', 'Profil diperbarui.');
     }
 
-    // ---- Kelola akun asisten (khusus admin) ----
+    // ---- Kelola akun (khusus laboran; halaman Akun di LaboranController::akun) ----
 
     public function tambahAsisten(Request $request)
     {
@@ -41,7 +36,7 @@ class ProfilController extends Controller
             'name' => 'required|string|max:100',
             'email' => 'required|email|unique:users',
             'password' => ['required', Password::defaults()],
-            'role' => 'required|in:admin,asisten',
+            'role' => 'required|in:admin,asisten,dosen',
         ]);
         User::create($data);
 
@@ -82,10 +77,11 @@ class ProfilController extends Controller
     {
         abort_unless($request->user()->role === 'admin', 403);
         abort_if($user->id === $request->user()->id, 422, 'Tidak bisa menghapus akun sendiri.');
-        // hapus lewat model agar file materi & kiriman tugas di kelasnya ikut terhapus dari penyimpanan
-        $user->kelas()->get()->each->delete();
+        // kelas lama milik asisten (tanpa matkul) ikut dihapus lewat model agar file materi & kiriman tugas terhapus;
+        // kelas di matkul dosen tetap ada dan menjadi "belum ada asisten"
+        $user->kelas()->whereNull('matkul_id')->get()->each->delete();
         $user->delete();
 
-        return back()->with('ok', "Akun {$user->name} dihapus beserta kelasnya.");
+        return back()->with('ok', "Akun {$user->name} dihapus.");
     }
 }

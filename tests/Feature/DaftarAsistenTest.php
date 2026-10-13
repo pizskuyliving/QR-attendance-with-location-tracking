@@ -35,13 +35,13 @@ class DaftarAsistenTest extends TestCase
     public function test_daftar_lalu_menunggu_persetujuan(): void
     {
         $this->get('/asisten/login')->assertSee('Daftar akun asisten');
-        $this->get('/asisten/daftar')->assertOk()->assertSee('disetujui admin', false);
+        $this->get('/asisten/daftar')->assertOk()->assertSee('disetujui laboran', false);
 
         $this->daftar()->assertRedirect(route('asisten.login'))->assertSessionHas('ok');
         $u = User::where('email', 'rina@gmail.com')->first();
         $this->assertSame(['asisten', 'menunggu'], [$u->role, $u->status]);
 
-        $this->login()->assertSessionHasErrors(['email' => 'Akunmu masih menunggu persetujuan admin.']);
+        $this->login()->assertSessionHasErrors(['email' => 'Akunmu masih menunggu persetujuan laboran.']);
         $this->assertGuest('web');
     }
 
@@ -51,13 +51,13 @@ class DaftarAsistenTest extends TestCase
         $u = User::where('email', 'rina@gmail.com')->first();
 
         $this->actingAs($this->admin, 'web')->get(route('asisten.dashboard'))->assertSee('1</b> pendaftaran asisten menunggu', false);
-        $this->get(route('asisten.profil'))->assertSee('Basis Data kelas A')->assertSee('Setujui');
+        $this->get(route('asisten.laboran.akun'))->assertSee('Basis Data kelas A')->assertSee('Setujui');
         $this->post(route('asisten.akun.setujui', $u))->assertSessionHas('ok');
         $this->assertSame('aktif', $u->fresh()->status);
         $this->assertTrue(LogAktivitas::where('aksi', 'asisten_setujui')->exists());
 
         auth('web')->logout();
-        $this->login()->assertRedirect(route('asisten.dashboard'));
+        $this->login()->assertRedirect(route('masuk.cek', ['ke' => '/asisten']));
         $this->assertAuthenticatedAs($u->fresh(), 'web');
     }
 

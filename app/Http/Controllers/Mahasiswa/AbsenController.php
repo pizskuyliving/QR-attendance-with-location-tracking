@@ -16,7 +16,7 @@ class AbsenController extends Controller
     public function home(Request $request)
     {
         $mhs = $request->user('mahasiswa');
-        $kelas = $mhs->kelas()->with('asisten')->get();
+        $kelas = $mhs->kelas()->with('asisten', 'asisten2')->get();
         $absen = $mhs->absensi()->get()->groupBy('kelas_id');
 
         $ringkasan = $kelas->map(function ($k) use ($absen) {
@@ -38,7 +38,16 @@ class AbsenController extends Controller
             ->where(fn ($q) => $q->where('tenggat', '>', now()->subDays(7))->where('terima_terlambat', true)->orWhere('tenggat', '>', now()))
             ->orderBy('tenggat')->limit(5)->get();
 
-        return view('mahasiswa.home', compact('mhs', 'ringkasan', 'tugasAktif'));
+        // UTS/UAS yang pengumpulan jawabannya sedang dibuka dan belum dikirim/dinilai
+        $terkirim = \App\Models\JawabanUjian::where('mahasiswa_id', $mhs->id)->get(['kelas_id', 'jenis'])
+            ->map(fn ($j) => $j->kelas_id.'-'.$j->jenis)->all();
+        $ujianAktif = $kelas->flatMap(fn ($k) => collect(\App\Models\SoalUjian::JENIS)
+            ->filter(fn ($label, $j) => $k->bukaJawaban($j) && $k->pivot->{'nilai_'.$j} === null && ! in_array($k->id.'-'.$j, $terkirim, true))
+            ->map(fn ($label, $j) => ['kelas' => $k, 'jenis' => $j, 'label' => $label, 'tenggat' => $k->tenggatUjian($j)])
+            ->values())
+            ->sortBy(fn ($u) => $u['tenggat']->getTimestamp())->values();
+
+        return view('mahasiswa.home', compact('mhs', 'ringkasan', 'tugasAktif', 'ujianAktif'));
     }
 
     /** Nama cookie penanda HP. Isinya acak, terenkripsi oleh Laravel, berlaku 5 tahun. */

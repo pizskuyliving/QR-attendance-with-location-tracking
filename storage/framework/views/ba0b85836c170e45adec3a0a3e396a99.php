@@ -2,7 +2,7 @@
 <?php $__env->startSection('body'); ?>
 <div class="auth">
     <div class="card" style="max-width:460px">
-        <img class="logo" src="/icons/icon-192.png" alt="">
+        <?php echo $__env->make('layouts.logo', ['logoKelas' => 'logo'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
         <h1 class="center">Daftar Akun Mahasiswa</h1>
         <p class="center muted">Isi data sesuai KTM. Kode verifikasi akan dikirim ke email kamu.</p>
         <?php echo $__env->make('layouts.flash', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>

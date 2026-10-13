@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Kelas;
 use App\Models\Mahasiswa;
+use App\Models\Matkul;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -11,24 +12,29 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Akun awal. Ganti kata sandinya setelah login pertama.
-     *   Admin   : admin@kampus.ac.id   / admin123
+     *   Laboran : admin@kampus.ac.id   / admin123
      *   Asisten : asisten@kampus.ac.id / asisten123
+     *   Dosen   : dosen@kampus.ac.id   / dosen123
      *   Mahasiswa contoh: 50421001@contoh.ac.id s.d. 50421010@contoh.ac.id, kata sandi = NPM (kelas A, sudah ikut Basis Data)
      */
     public function run(): void
     {
-        User::updateOrCreate(['email' => 'admin@kampus.ac.id'], ['name' => 'Admin', 'password' => 'admin123', 'role' => 'admin']);
+        User::updateOrCreate(['email' => 'admin@kampus.ac.id'], ['name' => 'Laboran', 'password' => 'admin123', 'role' => 'admin']);
         $asisten = User::updateOrCreate(['email' => 'asisten@kampus.ac.id'], ['name' => 'Asisten Demo', 'password' => 'asisten123', 'role' => 'asisten']);
+        $dosen = User::updateOrCreate(['email' => 'dosen@kampus.ac.id'], ['name' => 'Dosen Demo', 'password' => 'dosen123', 'role' => 'dosen']);
 
         if ($this->command->confirm('Buat kelas & mahasiswa contoh?', true)) {
+            // kelas dibuat dosen di dalam mata kuliahnya, lalu asisten dipilih per kelas
+            $bd = Matkul::firstOrCreate(['dosen_id' => $dosen->id, 'nama' => 'Basis Data']);
+            $web = Matkul::firstOrCreate(['dosen_id' => $dosen->id, 'nama' => 'Pemrograman Web']);
             $kelas = Kelas::firstOrCreate(
-                ['asisten_id' => $asisten->id, 'nama_kelas' => 'A', 'mata_kuliah' => 'Basis Data'],
+                ['matkul_id' => $bd->id, 'asisten_id' => $asisten->id, 'nama_kelas' => 'A', 'mata_kuliah' => 'Basis Data'],
                 ['hari' => 'Senin 08.00', 'ruang' => 'Lab 3', 'jumlah_pertemuan' => 8]
             );
             // matkul lain yang bisa dipilih sendiri oleh mahasiswa dari akunnya
-            Kelas::firstOrCreate(['asisten_id' => $asisten->id, 'nama_kelas' => 'A', 'mata_kuliah' => 'Pemrograman Web'],
+            Kelas::firstOrCreate(['matkul_id' => $web->id, 'asisten_id' => $asisten->id, 'nama_kelas' => 'A', 'mata_kuliah' => 'Pemrograman Web'],
                 ['hari' => 'Rabu 10.00', 'ruang' => 'Lab 1', 'jumlah_pertemuan' => 8]);
-            Kelas::firstOrCreate(['asisten_id' => $asisten->id, 'nama_kelas' => 'B', 'mata_kuliah' => 'Basis Data'],
+            Kelas::firstOrCreate(['matkul_id' => $bd->id, 'asisten_id' => $asisten->id, 'nama_kelas' => 'B', 'mata_kuliah' => 'Basis Data'],
                 ['hari' => 'Selasa 08.00', 'ruang' => 'Lab 3', 'jumlah_pertemuan' => 8]);
             $nama = ['Andi Saputra', 'Budi Santoso', 'Citra Lestari', 'Dewi Anggraini', 'Eko Prasetyo',
                 'Fitri Handayani', 'Gilang Ramadhan', 'Hana Pertiwi', 'Indra Wijaya', 'Joko Susilo'];

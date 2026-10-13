@@ -178,11 +178,14 @@ class MateriTugasTest extends TestCase
         $this->assertSame('E', $baris['1003']['huruf']);
         $this->assertNull($baris['1001']['tugas'][$nanti->id]);
 
-        $this->assertSame(100.0, RekapNilai::akhir(100, null, 20, 80)); // belum ada tugas: kehadiran saja
+        $this->assertSame(100.0, RekapNilai::akhir([[100.0, 20], [null, 80]])); // belum ada tugas: kehadiran saja
+        $this->assertNull(RekapNilai::akhir([[null, 20], [null, 80]]));
 
-        $this->actingAs($this->asisten, 'web')->put(route('asisten.kelas.bobot', $this->kelas), ['bobot_hadir' => 40])->assertSessionHas('ok');
+        $bobot = fn ($h, $t, $u = 0, $a = 0) => ['bobot_hadir' => $h, 'bobot_tugas' => $t, 'bobot_uts' => $u, 'bobot_uas' => $a];
+        $this->actingAs($this->asisten, 'web')->put(route('asisten.kelas.bobot', $this->kelas), $bobot(40, 60))->assertSessionHas('ok');
         $this->assertSame(60, $this->kelas->fresh()->bobot_tugas);
-        $this->put(route('asisten.kelas.bobot', $this->kelas), ['bobot_hadir' => 140])->assertSessionHasErrors('bobot_hadir');
+        $this->put(route('asisten.kelas.bobot', $this->kelas), $bobot(140, 0))->assertSessionHasErrors('bobot_hadir');
+        $this->put(route('asisten.kelas.bobot', $this->kelas), $bobot(20, 40, 20, 30))->assertSessionHasErrors('bobot_hadir'); // jumlah 110
         $this->get(route('asisten.kelas.show', [$this->kelas, 'tab' => 'nilai']))->assertOk()->assertSee('1001')->assertSee('91');
         $res = $this->get(route('asisten.absensi.export', [$this->kelas, 'jenis' => 'nilai']))->assertOk();
         $this->assertStringContainsString('spreadsheet', $res->headers->get('content-type'));

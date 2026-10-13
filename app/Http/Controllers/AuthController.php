@@ -19,19 +19,38 @@ class AuthController extends Controller
             return redirect()->route('mhs.home');
         }
 
-        return view('auth.mahasiswa');
+        return view('auth.masuk', ['peran' => 'mahasiswa']);
+    }
+
+    /** Satu halaman masuk untuk semua peran; pilihan "Masuk sebagai" menentukan jenis akun yang dicek. */
+    public function masuk(Request $request)
+    {
+        $peran = $request->validate(['peran' => 'required|in:mahasiswa,asisten,dosen,admin'])['peran'];
+
+        return $peran === 'mahasiswa' ? $this->loginMahasiswa($request) : $this->loginAsisten($request);
+    }
+
+    /** Kata sandi cocok untuk jenis akun lain: beri tahu peran yang benar, bukan sekadar "salah". */
+    private function salahPeran(Request $request, bool $diMahasiswa)
+    {
+        $kredensial = ['email' => mb_strtolower(trim($request->input('email'))), 'password' => $request->input('password')];
+        $cocok = $diMahasiswa ? Auth::guard('web')->validate($kredensial) : Auth::guard('mahasiswa')->validate($kredensial);
+        $pesan = ! $cocok ? 'Email atau kata sandi salah.'
+            : ($diMahasiswa ? 'Akun ini bukan akun mahasiswa. Pilih peran Asisten, Dosen, atau Laboran.' : 'Ini akun mahasiswa. Pilih "Masuk sebagai: Mahasiswa".');
+
+        return back()->withErrors(['email' => $pesan])->onlyInput('email', 'peran');
     }
 
     public function loginMahasiswa(Request $request)
     {
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
         if ($galat = Captcha::periksa($request)) {
-            return back()->withErrors(['captcha' => $galat])->onlyInput('email');
+            return back()->withErrors(['captcha' => $galat])->onlyInput('email', 'peran');
         }
 
         $email = mb_strtolower(trim($data['email']));
         if (! Auth::guard('mahasiswa')->validate(['email' => $email, 'password' => $data['password']])) {
-            return back()->withErrors(['email' => 'Email atau kata sandi salah.'])->onlyInput('email');
+            return $this->salahPeran($request, true);
         }
 
         $mhs = Mahasiswa::where('email', $email)->first();
@@ -45,7 +64,61 @@ class AuthController extends Controller
         Auth::guard('mahasiswa')->login($mhs, $request->boolean('ingat'));
         $request->session()->regenerate();
 
-        return redirect()->intended(route('mhs.home'));
+        return $this->keTujuan($request, route('mhs.home'), $mhs);
+    }
+
+    /**
+     * Setelah login berhasil, lewat /masuk/cek dulu: bila browser tidak menyimpan cookie sesi
+     * (mode privat, cookie diblokir, data situs baru dihapus), pengguna mendapat pesan jelas, bukan terpental diam-diam.
+     */
+    private function keTujuan(Request $request, string $bawaan, Mahasiswa|User $akun)
+    {
+        $tujuan = $request->session()->pull('url.intended', $bawaan);
+        $path = parse_url($tujuan, PHP_URL_PATH) ?: '/';
+        $query = parse_url($tujuan, PHP_URL_QUERY);
+        $ke = $path.($query ? '?'.$query : '');
+        // halaman yang dibuka sebelum login (mis. tautan asisten lalu masuk sebagai mahasiswa) belum tentu boleh dibuka akun ini
+        if (! self::bolehDibuka($path, $akun)) {
+            $ke = parse_url($bawaan, PHP_URL_PATH) ?: '/';
+        }
+
+        return redirect()->route('masuk.cek', ['ke' => $ke]);
+    }
+
+    /** Apakah path ini memang halaman untuk akun/peran tersebut (area mahasiswa vs staf, middleware peran). */
+    private static function bolehDibuka(string $path, Mahasiswa|User $akun): bool
+    {
+        if ($akun instanceof Mahasiswa) {
+            return $path === '/m' || str_starts_with($path, '/m/');
+        }
+        if ($path !== '/asisten' && ! str_starts_with($path, '/asisten/')) {
+            return false;
+        }
+        try {
+            $route = app('router')->getRoutes()->match(Request::create($path, 'GET'));
+        } catch (\Throwable) {
+            return false;
+        }
+        foreach ($route->gatherMiddleware() as $m) {
+            if (is_string($m) && str_starts_with($m, 'peran:') && ! in_array($akun->role, explode(',', substr($m, 6)), true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function cekSesi(Request $request)
+    {
+        $ke = (string) $request->query('ke', '/');
+        if (! str_starts_with($ke, '/') || str_starts_with($ke, '//') || str_contains($ke, '\\')) {
+            $ke = '/';
+        }
+        if (Auth::guard('mahasiswa')->check() || Auth::guard('web')->check()) {
+            return redirect($ke);
+        }
+
+        return redirect()->route(str_starts_with($ke, '/asisten') ? 'asisten.login' : 'login', ['sesi' => 'hilang']);
     }
 
     public function formAsisten()
@@ -54,25 +127,26 @@ class AuthController extends Controller
             return redirect()->route('asisten.dashboard');
         }
 
-        return view('auth.asisten');
+        // halaman masuk selalu dibuka di peran Mahasiswa; Asisten hanya dipilihkan saat kembali membawa pesan galat
+        return view('auth.masuk', ['peran' => session('errors') ? 'asisten' : 'mahasiswa']);
     }
 
     public function loginAsisten(Request $request)
     {
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
         if ($galat = Captcha::periksa($request)) {
-            return back()->withErrors(['captcha' => $galat])->onlyInput('email');
+            return back()->withErrors(['captcha' => $galat])->onlyInput('email', 'peran');
         }
 
         if (! Auth::validate($data)) {
-            return back()->withErrors(['email' => 'Email atau kata sandi salah.'])->onlyInput('email');
+            return $this->salahPeran($request, false);
         }
         $user = User::where('email', $data['email'])->first();
         if ($user->status === 'menunggu') {
-            return back()->withErrors(['email' => 'Akunmu masih menunggu persetujuan admin.'])->onlyInput('email');
+            return back()->withErrors(['email' => 'Akunmu masih menunggu persetujuan laboran.'])->onlyInput('email', 'peran');
         }
         if ($user->status !== 'aktif') {
-            return back()->withErrors(['email' => 'Pendaftaran akun ini ditolak admin. Hubungi admin bila ini keliru.'])->onlyInput('email');
+            return back()->withErrors(['email' => 'Pendaftaran akun ini ditolak laboran. Hubungi laboran bila ini keliru.'])->onlyInput('email', 'peran');
         }
 
         if ($user->pakaiDuaLangkah()) {
@@ -86,7 +160,7 @@ class AuthController extends Controller
         Auth::login($user, $request->boolean('ingat'));
         $request->session()->regenerate();
 
-        return redirect()->intended(route('asisten.dashboard'));
+        return $this->keTujuan($request, route('asisten.dashboard'), $user);
     }
 
     private const MENIT_2FA = 5;
@@ -127,7 +201,7 @@ class AuthController extends Controller
         Auth::login($user, $ingat);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('asisten.dashboard'));
+        return $this->keTujuan($request, route('asisten.dashboard'), $user);
     }
 
     private function calonDuaLangkah(Request $request): ?User
@@ -143,13 +217,12 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $keMahasiswa = Auth::guard('mahasiswa')->check();
         Auth::guard('mahasiswa')->logout();
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route($keMahasiswa ? 'login' : 'asisten.login');
+        return redirect()->route('login');
     }
 
     public function lupa()
@@ -162,6 +235,7 @@ class AuthController extends Controller
     {
         // pakai guard sesuai halaman asal, supaya browser yang login sebagai keduanya tidak salah akun
         $guard = $request->routeIs('mhs.*') ? 'mahasiswa' : 'web';
+        /** @var \App\Models\User|\App\Models\Mahasiswa $user */
         $user = Auth::guard($guard)->user();
         $request->validate([
             'password_lama' => 'required',

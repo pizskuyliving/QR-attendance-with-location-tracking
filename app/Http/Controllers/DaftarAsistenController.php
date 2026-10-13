@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 
-/** Asisten mendaftar sendiri; akun baru berstatus "menunggu" sampai disetujui admin. */
+/** Asisten mendaftar sendiri; akun baru berstatus "menunggu" sampai disetujui laboran. */
 class DaftarAsistenController extends Controller
 {
     public function form()
@@ -17,19 +17,25 @@ class DaftarAsistenController extends Controller
         if (Auth::check()) {
             return redirect()->route('asisten.dashboard');
         }
+        if (! config('absen.daftar_asisten')) {
+            return RegisterController::ditutup('asisten');
+        }
 
         return view('auth.daftar-asisten');
     }
 
     public function store(Request $request)
     {
+        if (! config('absen.daftar_asisten')) {
+            return RegisterController::ditutup('asisten');
+        }
         $data = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:100'],
             'email' => ['required', 'email:rfc', 'max:100', 'unique:users,email'],
             'keterangan' => ['required', 'string', 'min:3', 'max:255'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ], [
-            'email.unique' => 'Email ini sudah terdaftar. Jika pendaftaranmu belum disetujui, tunggu atau hubungi admin.',
+            'email.unique' => 'Email ini sudah terdaftar. Jika pendaftaranmu belum disetujui, tunggu atau hubungi laboran.',
         ], [
             'name' => 'nama', 'keterangan' => 'mata kuliah yang diampu', 'password' => 'kata sandi',
         ]);
@@ -38,9 +44,9 @@ class DaftarAsistenController extends Controller
         }
 
         $u = User::create($data + ['role' => 'asisten', 'status' => 'menunggu']);
-        LogAktivitas::catat(null, 'asisten_daftar', "{$u->name} ({$u->email}) mendaftar sebagai asisten, menunggu persetujuan admin");
+        LogAktivitas::catat(null, 'asisten_daftar', "{$u->name} ({$u->email}) mendaftar sebagai asisten, menunggu persetujuan laboran");
 
         return redirect()->route('asisten.login')
-            ->with('ok', 'Pendaftaran terkirim. Kamu bisa masuk setelah admin menyetujui akunmu.');
+            ->with('ok', 'Pendaftaran terkirim. Kamu bisa masuk setelah laboran menyetujui akunmu.');
     }
 }

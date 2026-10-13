@@ -60,6 +60,7 @@ class MahasiswaController extends Controller
         $mahasiswa->absensi()->where('kelas_id', $kelas->id)->delete();
         // kiriman tugas di kelas ini ikut dihapus (hook model menghapus filenya)
         \App\Models\Pengumpulan::where('mahasiswa_id', $mahasiswa->id)->whereIn('tugas_id', $kelas->tugas()->pluck('id'))->get()->each->delete();
+        $kelas->jawabanUjian()->where('mahasiswa_id', $mahasiswa->id)->get()->each->delete();
         $kelas->mahasiswa()->detach($mahasiswa->id);
         // hapus akun bila sudah tidak terdaftar di kelas mana pun
         if (! $mahasiswa->kelas()->exists()) {

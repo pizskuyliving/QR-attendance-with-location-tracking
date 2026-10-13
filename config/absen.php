@@ -1,6 +1,9 @@
 <?php
 
 return [
+    // Nilai di file ini adalah bawaan. Institusi, domain email, pendaftaran, ukuran unggahan, dan nilai huruf
+    // bisa diubah laboran dari menu Sistem (tabel pengaturan) dan nilai dari sana yang dipakai.
+
     // identitas sistem (dipakai di judul halaman, header, footer, email, dan aplikasi authenticator)
     'nama' => 'FLEX',
     'nama_panjang' => 'Flexible Learning Experience',
@@ -16,6 +19,10 @@ return [
         fn ($d) => strtolower(trim($d, " .@")),
         explode(',', (string) env('DOMAIN_EMAIL_MAHASISWA', 'student.uir.ac.id'))
     ))),
+
+    // pendaftaran mandiri dari halaman masuk; laboran bisa menutupnya dari menu Sistem
+    'daftar_mahasiswa' => true,
+    'daftar_asisten' => true,
 
     // unggahan: ukuran maksimal (KB) dan jenis file yang diterima
     'maks_unggah_kb' => (int) env('MAKS_UNGGAH_KB', 20480),

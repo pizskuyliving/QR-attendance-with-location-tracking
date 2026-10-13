@@ -56,7 +56,7 @@ class CaptchaTest extends TestCase
 
         $this->get('/')->assertSee('Captcha belum dikonfigurasi')->assertDontSee('data-sitekey', false);
         $req = \Illuminate\Http\Request::create('/login', 'POST', ['cf-turnstile-response' => 'x']);
-        $this->assertSame('Captcha belum dikonfigurasi oleh admin. Login sementara tidak bisa dilakukan.', \App\Support\Captcha::periksa($req));
+        $this->assertSame('Captcha belum dikonfigurasi oleh laboran. Login sementara tidak bisa dilakukan.', \App\Support\Captcha::periksa($req));
         Http::assertNothingSent();
     }
 
@@ -65,7 +65,7 @@ class CaptchaTest extends TestCase
         $this->mahasiswa();
         Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => true])]);
 
-        $this->login(['cf-turnstile-response' => 'token-ok'])->assertRedirect(route('mhs.home'));
+        $this->login(['cf-turnstile-response' => 'token-ok'])->assertRedirect(route('masuk.cek', ['ke' => '/m']));
         $this->assertAuthenticated('mahasiswa');
         Http::assertSent(fn ($r) => $r['secret'] === 'secret-asli' && $r['response'] === 'token-ok');
     }
@@ -111,7 +111,7 @@ class CaptchaTest extends TestCase
         $data = ['email' => 'asisten@kampus.ac.id', 'password' => 'asisten123', 'cf-turnstile-response' => 't'];
         $this->from('/asisten/login')->post('/asisten/login', $data)->assertSessionHasErrors('captcha');
         $this->assertGuest();
-        $this->from('/asisten/login')->post('/asisten/login', $data)->assertRedirect(route('asisten.dashboard'));
+        $this->from('/asisten/login')->post('/asisten/login', $data)->assertRedirect(route('masuk.cek', ['ke' => '/asisten']));
         $this->assertAuthenticated();
     }
 

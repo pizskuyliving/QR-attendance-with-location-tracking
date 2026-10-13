@@ -38,12 +38,13 @@
     <link rel="preload" href="/fonts/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" href="/icons/icon-192.png">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="icon" href="/icons/favicon-gelap.png" media="(prefers-color-scheme: dark)">
+    <link rel="icon" href="/icons/favicon-terang.png" media="(prefers-color-scheme: light)">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="FLEX">
-    <link rel="stylesheet" href="/css/app.css?v=23">
+    <link rel="stylesheet" href="/css/app.css?v=37">
     @stack('head')
 </head>
 <body class="@yield('body-class')">
@@ -54,7 +55,7 @@
         window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
     }
 </script>
-<script src="/js/ui.js?v=23"></script>
+<script src="/js/ui.js?v=37"></script>
 @stack('scripts')
 </body>
 </html>

@@ -7,7 +7,7 @@
         <div class="foot-in">
             <div class="foot-top">
                 <div class="foot-brand">
-                    <img src="/icons/icon-192.png" alt="">
+                    <?php echo $__env->make('layouts.logo', ['logoKelas' => ''], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                     <div><b><?php echo e($c['nama']); ?></b><span><?php echo e($c['nama_panjang']); ?></span></div>
                 </div>
                 <p>Absensi QR, materi perkuliahan, tugas, dan rekap nilai dalam satu tempat.</p>

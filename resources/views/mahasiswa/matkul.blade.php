@@ -3,7 +3,7 @@
 @section('head')
     <a class="back" href="{{ route('mhs.home') }}">&larr; Beranda</a>
     <h1 style="margin:0">{{ $kelas->mata_kuliah }}</h1>
-    <div class="sub">Kelas {{ $kelas->nama_kelas }} · {{ $kelas->asisten->name }}@if ($kelas->hari) · {{ $kelas->hari }}@endif @if ($kelas->ruang) · {{ $kelas->ruang }}@endif</div>
+    <div class="sub">Kelas {{ $kelas->nama_kelas }} · {{ $kelas->namaAsisten() }}@if ($kelas->hari) · {{ $kelas->hari }}@endif @if ($kelas->ruang) · {{ $kelas->ruang }}@endif</div>
 @endsection
 @section('content')
     @php($n = $kelas->jumlah_pertemuan)
@@ -19,6 +19,29 @@
         </div>
 
         <div>
+            @php($ujian = collect(\App\Models\SoalUjian::JENIS)->filter(fn ($l, $j) => $kelas->tenggatUjian($j) || isset($jawaban[$j]) || $pivot->{'nilai_'.$j} !== null || $soal->contains('jenis', $j)))
+            @if ($ujian->isNotEmpty())
+                <section class="pt soal-mhs">
+                    <div class="pt-h"><span class="pt-n">{!! \App\Support\Ikon::svg('klip') !!}</span><span class="tx"><b>UTS &amp; UAS</b></span></div>
+                    <ul class="list">
+                        @foreach ($ujian as $j => $label)
+                            @php($nilaiU = $pivot->{'nilai_'.$j})
+                            @php($tenggat = $kelas->tenggatUjian($j))
+                            <li><a class="item" href="{{ route('mhs.ujian', [$kelas, $j]) }}">
+                                <span class="ft tgs">{{ $label }}</span>
+                                <span class="tx"><b>{{ $label === 'UTS' ? 'Ujian Tengah Semester' : 'Ujian Akhir Semester' }}</b>
+                                    <span class="meta">{{ $tenggat ? 'Unggah jawaban sampai '.$tenggat->translatedFormat('d M Y, H:i') : 'Soal & nilai' }}</span></span>
+                                <span class="end">
+                                    @if ($nilaiU !== null)<span class="badge H">Nilai {{ $nilaiU + 0 }}</span>
+                                    @elseif (isset($jawaban[$j]))<span class="badge S">Terkirim</span>
+                                    @elseif ($kelas->bukaJawaban($j))<span class="badge I">Kerjakan</span>
+                                    @elseif ($tenggat)<span class="badge A">Ditutup</span>@endif
+                                </span>
+                            </a></li>
+                        @endforeach
+                    </ul>
+                </section>
+            @endif
             @for ($p = 1; $p <= $n; $p++)
                 @php($a = $absen[$p] ?? null)
                 @php($isi = collect($materi[$p] ?? [])->count() + collect($tugas[$p] ?? [])->count())

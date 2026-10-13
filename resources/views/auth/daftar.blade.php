@@ -3,7 +3,7 @@
 @section('body')
 <div class="auth">
     <div class="card" style="max-width:460px">
-        <img class="logo" src="/icons/icon-192.png" alt="">
+        @include('layouts.logo', ['logoKelas' => 'logo'])
         <h1 class="center">Daftar Akun Mahasiswa</h1>
         <p class="center muted">Isi data sesuai KTM. Kode verifikasi akan dikirim ke email kamu.</p>
         @include('layouts.flash')

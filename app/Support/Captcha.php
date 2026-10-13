@@ -38,7 +38,7 @@ class Captcha
         if (! $key) {
             Log::error('TURNSTILE_SITE_KEY / TURNSTILE_SECRET_KEY belum diisi di .env');
 
-            return 'Captcha belum dikonfigurasi oleh admin. Login sementara tidak bisa dilakukan.';
+            return 'Captcha belum dikonfigurasi oleh laboran. Login sementara tidak bisa dilakukan.';
         }
 
         $token = $request->input('cf-turnstile-response');

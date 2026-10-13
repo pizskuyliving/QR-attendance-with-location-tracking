@@ -14,7 +14,7 @@ class KelasController extends Controller
     {
         $mhs = $request->user('mahasiswa');
         $diikuti = $mhs->kelas()->pluck('kelas.id')->all();
-        $semua = Kelas::with('asisten')->withCount('mahasiswa')->orderBy('mata_kuliah')->get();
+        $semua = Kelas::with('asisten', 'asisten2')->withCount('mahasiswa')->orderBy('mata_kuliah')->get();
         $adaAbsen = $mhs->absensi()->distinct()->pluck('kelas_id')->all();
 
         return view('mahasiswa.kelas', [
@@ -46,6 +46,9 @@ class KelasController extends Controller
         }
         if (\App\Models\Pengumpulan::where('mahasiswa_id', $mhs->id)->whereIn('tugas_id', $kelas->tugas()->pluck('id'))->exists()) {
             return back()->withErrors(['kelas' => 'Kamu sudah mengumpulkan tugas di '.$kelas->label().'. Hubungi asisten bila salah pilih.']);
+        }
+        if ($kelas->jawabanUjian()->where('mahasiswa_id', $mhs->id)->exists()) {
+            return back()->withErrors(['kelas' => 'Kamu sudah mengunggah jawaban ujian di '.$kelas->label().'. Hubungi asisten bila salah pilih.']);
         }
         if ($mhs->kelas()->whereKey($kelas->id)->exists()) {
             $mhs->kelas()->detach($kelas->id);

@@ -9,7 +9,7 @@
             <div class="small muted" style="margin-top:4px">Mode uji: key Turnstile belum diisi di .env, captcha selalu lolos.</div>
         @endif
     @endif
-    <div id="captchaErr" class="err {{ $captchaSalah || ! $siteKey ? '' : 'hide' }}">{{ $errors->first('captcha') ?: ($siteKey ? '' : 'Captcha belum dikonfigurasi oleh admin.') }}</div>
+    <div id="captchaErr" class="err {{ $captchaSalah || ! $siteKey ? '' : 'hide' }}">{{ $errors->first('captcha') ?: ($siteKey ? '' : 'Captcha belum dikonfigurasi oleh laboran.') }}</div>
 </div>
 @if ($captchaSalah)
     <div class="toast bad" role="alert" id="toastCaptcha">

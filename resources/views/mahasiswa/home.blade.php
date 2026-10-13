@@ -15,8 +15,15 @@
         <div class="side">
             <div class="sec-title"><h2>Tugas yang perlu dikumpulkan</h2></div>
             <div class="card flat">
-                @if ($tugasAktif->count())
+                @if ($tugasAktif->count() || $ujianAktif->count())
                     <ul class="list">
+                        @foreach ($ujianAktif as $u)
+                            <li><a class="item" href="{{ route('mhs.ujian', [$u['kelas'], $u['jenis']]) }}">
+                                <span class="ft tgs">{{ $u['label'] }}</span>
+                                <span class="tx"><b>Jawaban {{ $u['label'] }}</b><span class="meta">{{ $u['kelas']->mata_kuliah }} · Kelas {{ $u['kelas']->nama_kelas }}</span></span>
+                                <span class="end small"><b style="display:block">{{ $u['tenggat']->diffForHumans(null, true) }}</b><span class="meta">{{ $u['tenggat']->translatedFormat('d M H:i') }}</span></span>
+                            </a></li>
+                        @endforeach
                         @foreach ($tugasAktif as $t)
                             <li><a class="item" href="{{ route('mhs.tugas', $t) }}">
                                 <span class="ft tgs">TGS</span>
@@ -41,7 +48,7 @@
                                 <div style="min-width:0">
                                     <div class="eyebrow">Kelas {{ $r['kelas']->nama_kelas }}@if ($r['kelas']->hari) · {{ $r['kelas']->hari }}@endif</div>
                                     <div class="mk-title">{{ $r['kelas']->mata_kuliah }}</div>
-                                    <div class="meta">{{ $r['kelas']->asisten->name }}</div>
+                                    <div class="meta">{{ $r['kelas']->namaAsisten() }}</div>
                                 </div>
                                 @if ($r['sesiAktif'])<span class="badge live">QR aktif · P{{ $r['sesiAktif']->pertemuan }}</span>@endif
                             </div>

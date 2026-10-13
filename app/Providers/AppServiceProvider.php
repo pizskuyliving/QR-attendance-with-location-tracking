@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Pengaturan;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -28,6 +29,9 @@ class AppServiceProvider extends ServiceProvider
         if (str_starts_with(config('app.url'), 'https://') || config('app.force_https')) {
             URL::forceScheme('https');
         }
+
+        // pengaturan dari menu Sistem (laboran) menimpa bawaan config/absen.php
+        Pengaturan::terapkan();
 
         // aturan kata sandi yang sama untuk semua form (daftar, ganti sandi, akun asisten)
         Password::defaults(fn () => Password::min(8)->letters()->numbers());

@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Pengumpulan;
 
 /**
- * Nilai akhir per mahasiswa = bobot_hadir% × persentase hadir + bobot_tugas% × rata-rata tugas.
+ * Nilai akhir per mahasiswa = bobot_hadir% × persentase hadir + bobot_tugas% × rata-rata tugas
+ *   + bobot_uts% × nilai UTS + bobot_uas% × nilai UAS.
+ * Komponen yang belum ada nilainya (belum ada tugas dihitung, UTS/UAS belum diisi) dilewati dan bobotnya dibagi ke komponen lain.
  * Tugas yang dihitung: yang sudah lewat tenggat, atau yang sudah dinilai.
  * Tidak mengumpulkan tugas yang sudah lewat tenggat = 0. Sudah mengumpulkan tapi belum dinilai = belum dihitung (ditandai).
  */
@@ -45,7 +47,14 @@ class RekapNilai
                 }
             }
             $rataTugas = $dihitung ? round(array_sum($dihitung) / count($dihitung), 1) : null;
-            $akhir = self::akhir($b['persen'], $rataTugas, $kelas->bobot_hadir, $kelas->bobot_tugas);
+            $uts = $mhs->pivot?->nilai_uts === null ? null : (float) $mhs->pivot->nilai_uts;
+            $uas = $mhs->pivot?->nilai_uas === null ? null : (float) $mhs->pivot->nilai_uas;
+            $akhir = self::akhir([
+                [$b['persen'], (int) $kelas->bobot_hadir],
+                [$rataTugas, (int) $kelas->bobot_tugas],
+                [$uts, (int) $kelas->bobot_uts],
+                [$uas, (int) $kelas->bobot_uas],
+            ]);
 
             $this->baris[] = [
                 'mahasiswa' => $mhs,
@@ -53,6 +62,8 @@ class RekapNilai
                 'tugas' => $nilaiTugas,
                 'kiriman' => $milik,
                 'rata_tugas' => $rataTugas,
+                'uts' => $uts,
+                'uas' => $uas,
                 'belum_dinilai' => $belumDinilai,
                 'akhir' => $akhir,
                 'huruf' => $akhir === null ? null : self::huruf($akhir),
@@ -60,18 +71,21 @@ class RekapNilai
         }
     }
 
-    public static function akhir(float $hadir, ?float $rataTugas, int $bobotHadir, int $bobotTugas): ?float
+    /**
+     * Rata-rata berbobot dari komponen [nilai, bobot]. Komponen tanpa nilai (null) tidak dihitung,
+     * jadi nilai akhir sementara tetap masuk akal sebelum semua tugas/ujian selesai.
+     *
+     * @param  list<array{0:?float,1:int}>  $komponen
+     */
+    public static function akhir(array $komponen): ?float
     {
-        $total = $bobotHadir + $bobotTugas;
+        $ada = array_filter($komponen, fn ($k) => $k[0] !== null && $k[1] > 0);
+        $total = array_sum(array_column($ada, 1));
         if ($total === 0) {
             return null;
         }
-        // belum ada tugas yang dihitung: nilai akhir hanya dari kehadiran
-        if ($rataTugas === null) {
-            return $bobotHadir ? round($hadir, 1) : null;
-        }
 
-        return round(($hadir * $bobotHadir + $rataTugas * $bobotTugas) / $total, 1);
+        return round(array_sum(array_map(fn ($k) => $k[0] * $k[1], $ada)) / $total, 1);
     }
 
     public static function huruf(float $nilai): string

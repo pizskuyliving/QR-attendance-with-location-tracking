@@ -26,7 +26,7 @@ class Mahasiswa extends Authenticatable
 
     public function kelas(): BelongsToMany
     {
-        return $this->belongsToMany(Kelas::class, 'kelas_mahasiswa')->withTimestamps();
+        return $this->belongsToMany(Kelas::class, 'kelas_mahasiswa')->withTimestamps()->withPivot('nilai_uts', 'nilai_uas');
     }
 
     public function absensi(): HasMany

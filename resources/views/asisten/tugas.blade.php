@@ -20,14 +20,14 @@
     </div>
 
     <div class="table-wrap">
-        <table>
+        <table class="tabel-nilai">
             <thead><tr><th class="c">No</th><th>NPM</th><th>Nama</th><th>Kiriman</th><th style="width:90px">Nilai</th><th>Komentar</th><th></th></tr></thead>
             <tbody>
             @foreach ($mahasiswa as $i => $m)
                 @php($k = $kiriman[$m->id] ?? null)
                 <tr>
                     <td class="c muted">{{ $i + 1 }}</td><td>{{ $m->npm }}</td><td>{{ $m->nama }}</td>
-                    <td class="small">
+                    <td class="small berkas">
                         @if ($k)
                             <a href="{{ route('asisten.tugas.unduh', [$tugas, $k]) }}">{!! \App\Support\Ikon::svg('klip') !!} {{ $k->nama_file }}</a>
                             <div class="muted">{{ $k->dikumpulkan_at->translatedFormat('d M H:i') }} · {{ \App\Models\Materi::ukuranTeks($k->ukuran) }}
@@ -38,8 +38,8 @@
                         @endif
                     </td>
                     @if ($k)
-                        <td><input type="number" class="nilai" form="n{{ $k->id }}" name="nilai" min="0" max="100" step="0.01" value="{{ $k->nilai !== null ? $k->nilai + 0 : '' }}" style="padding:6px 8px"></td>
-                        <td><input class="komentar" form="n{{ $k->id }}" name="komentar" value="{{ $k->komentar }}" placeholder="opsional" style="padding:6px 8px"></td>
+                        <td><input type="number" class="nilai" form="n{{ $k->id }}" name="nilai" min="0" max="100" step="0.01" value="{{ $k->nilai !== null ? $k->nilai + 0 : '' }}"></td>
+                        <td><input class="komentar" form="n{{ $k->id }}" name="komentar" value="{{ $k->komentar }}" placeholder="opsional"></td>
                         <td><form id="n{{ $k->id }}" class="frm-nilai" method="post" action="{{ route('asisten.tugas.nilai', [$tugas, $k]) }}">@csrf<button class="btn sm">Simpan</button></form></td>
                     @else
                         <td></td><td></td><td></td>

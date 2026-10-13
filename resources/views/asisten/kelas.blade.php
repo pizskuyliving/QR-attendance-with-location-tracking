@@ -15,6 +15,21 @@
         @endif
     </div>
 
+    @if ($catatan->isNotEmpty())
+        <details class="card catatan-dosen" @if ($catatan->contains(fn ($c) => ! $c->dibaca_at)) open @endif>
+            <summary>{!! \App\Support\Ikon::svg('alert') !!}<span><b>Catatan dosen</b>
+                @if ($baru = $catatan->whereNull('dibaca_at')->count())<span class="badge I">{{ $baru }} baru</span>@endif</span></summary>
+            <ul>
+                @foreach ($catatan as $c)
+                    <li class="{{ $c->dibaca_at ? '' : 'baru' }}">
+                        <div class="small muted">{{ $c->dosen->name }} · {{ $c->created_at->translatedFormat('d M Y H:i') }}</div>
+                        <div class="isi">{{ $c->isi }}</div>
+                    </li>
+                @endforeach
+            </ul>
+        </details>
+    @endif
+
     {{-- Nyalakan QR hari ini --}}
     <div class="card">
         @if ($sesiAktif)
@@ -31,7 +46,7 @@
             <form method="post" action="{{ route('asisten.sesi.buka', $kelas) }}" class="row">
                 @csrf
                 <b>Nyalakan QR absen hari ini untuk</b>
-                <select name="pertemuan" style="width:auto">
+                <select name="pertemuan" class="pilih-auto">
                     @for ($p = 1; $p <= $n; $p++)
                         <option value="{{ $p }}" @selected($p === $berikut)>Pertemuan {{ $p }}</option>
                     @endfor
@@ -43,7 +58,7 @@
     </div>
 
     <nav class="tabs">
-        @foreach (['absen' => 'Absensi', 'riwayat' => 'Riwayat & Lokasi', 'mahasiswa' => 'Mahasiswa', 'materi' => 'Materi', 'tugas' => 'Tugas', 'nilai' => 'Nilai', 'rekap' => 'Rekap & Export', 'log' => 'Log', 'pengaturan' => 'Pengaturan'] as $key => $label)
+        @foreach (['absen' => 'Absensi', 'riwayat' => 'Riwayat & Lokasi', 'mahasiswa' => 'Mahasiswa', 'materi' => 'Materi', 'tugas' => 'Tugas', 'ujian' => 'UTS & UAS', 'nilai' => 'Nilai', 'rekap' => 'Rekap & Export', 'log' => 'Log', 'pengaturan' => 'Pengaturan'] as $key => $label)
             <a href="?tab={{ $key }}" class="{{ $tab === $key ? 'on' : '' }}">{{ $label }}</a>
         @endforeach
     </nav>
@@ -98,8 +113,8 @@
             <summary>Isi cepat satu pertemuan</summary>
             <form method="post" action="{{ route('asisten.absensi.massal', $kelas) }}" class="row" style="margin-top:12px" data-konfirmasi="Terapkan status ini ke mahasiswa pada pertemuan yang dipilih?">
                 @csrf
-                <select name="pertemuan" style="width:auto">@for ($p = 1; $p <= $n; $p++)<option value="{{ $p }}">Pertemuan {{ $p }}</option>@endfor</select>
-                <select name="status" style="width:auto">
+                <select name="pertemuan" class="pilih-auto">@for ($p = 1; $p <= $n; $p++)<option value="{{ $p }}">Pertemuan {{ $p }}</option>@endfor</select>
+                <select name="status" class="pilih-auto">
                     @foreach ($status as $k => $v)<option value="{{ $k }}" @selected($k === 'A')>Yang kosong → {{ $v }}</option>@endforeach
                     <option value="hapus">Hapus semua absen pertemuan ini</option>
                 </select>
@@ -130,7 +145,7 @@
             <form method="get" class="row">
                 <input type="hidden" name="tab" value="riwayat">
                 <label class="check small"><input type="checkbox" name="curiga" value="1" @checked(request('curiga')) onchange="this.form.submit()"> Hanya yang mencurigakan</label>
-                <select name="p" style="width:auto" onchange="this.form.submit()">
+                <select name="p" class="pilih-auto" onchange="this.form.submit()">
                     <option value="">Semua pertemuan</option>
                     @for ($p = 1; $p <= $n; $p++)<option value="{{ $p }}" @selected(request('p') == $p)>Pertemuan {{ $p }}</option>@endfor
                 </select>
@@ -356,12 +371,10 @@
 
     @if ($tab === 'nilai')
         <div class="row between" style="margin-bottom:12px;align-items:flex-end">
-            <form method="post" action="{{ route('asisten.kelas.bobot', $kelas) }}" class="row" style="gap:8px">
+            <form method="post" action="{{ route('asisten.kelas.bobot', $kelas) }}" class="bobot-form">
                 @csrf @method('put')
-                <span>Bobot kehadiran</span>
-                <input type="number" name="bobot_hadir" min="0" max="100" value="{{ $kelas->bobot_hadir }}" style="width:80px"
-                    oninput="document.getElementById('bobotTugas').textContent = 100 - (+this.value || 0)">
-                <span>% · tugas <b id="bobotTugas">{{ $kelas->bobot_tugas }}</b>%</span>
+                <div class="small muted" style="margin-bottom:4px">Bobot nilai akhir</div>
+                @include('asisten._bobot', ['k' => $kelas])
                 <button class="btn soft sm">Simpan bobot</button>
             </form>
             <a class="btn soft" href="{{ route('asisten.absensi.export', [$kelas, 'jenis' => 'nilai']) }}">{!! \App\Support\Ikon::svg('unduh') !!} Export nilai ke Excel</a>
@@ -370,7 +383,9 @@
             <table>
                 <thead><tr><th class="c">No</th><th>NPM</th><th class="sticky-col">Nama</th><th class="c">Hadir</th>
                     @foreach ($nilai->tugas as $t)<th class="c" title="{{ $t->judul }}"><a href="{{ route('asisten.tugas.show', $t) }}">P{{ $t->pertemuan }}</a><div class="small muted" style="font-weight:400;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $t->judul }}</div></th>@endforeach
-                    <th class="c">Rata tugas</th><th class="c">Nilai akhir</th><th class="c">Huruf</th></tr></thead>
+                    <th class="c">Rata tugas</th>
+                    <th class="c">UTS</th><th class="c">UAS</th>
+                    <th class="c">Nilai akhir</th><th class="c">Huruf</th></tr></thead>
                 <tbody>
                 @forelse ($nilai->baris as $i => $b)
                     <tr>
@@ -381,18 +396,90 @@
                             <td class="c">@if ($v !== null){{ $v + 0 }}@elseif (isset($b['kiriman'][$t->id]))<span class="badge I" title="Sudah mengumpulkan, belum dinilai">?</span>@else<span class="muted">–</span>@endif</td>
                         @endforeach
                         <td class="c">{{ $b['rata_tugas'] ?? '–' }}</td>
+                            @foreach (['uts', 'uas'] as $u)
+                                <td class="c"><input type="number" class="cell nilai-ujian" form="formUjian" name="nilai_{{ $u }}[{{ $b['mahasiswa']->id }}]" min="0" max="100" step="0.01" value="{{ $b[$u] === null ? '' : $b[$u] + 0 }}" aria-label="Nilai {{ strtoupper($u) }} {{ $b['mahasiswa']->nama }}"></td>
+                            @endforeach
                         <td class="c"><b>{{ $b['akhir'] ?? '–' }}</b></td>
                         <td class="c">@if ($b['huruf'])<span class="badge {{ in_array($b['huruf'], ['A', 'B']) ? 'H' : ($b['huruf'] === 'C' ? 'I' : 'A') }}">{{ $b['huruf'] }}</span>@endif</td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ 7 + count($nilai->tugas) }}" class="muted">Belum ada mahasiswa.</td></tr>
+                    <tr><td colspan="{{ 7 + count($nilai->tugas) + 2 }}" class="muted">Belum ada mahasiswa.</td></tr>
                 @endforelse
                 </tbody>
             </table>
         </div>
-        <p class="small muted" style="margin-top:8px">Nilai akhir = {{ $kelas->bobot_hadir }}% × persentase hadir + {{ $kelas->bobot_tugas }}% × rata-rata tugas.
+        @if ($nilai->baris)
+            <form method="post" action="{{ route('asisten.kelas.nilai-ujian', $kelas) }}" id="formUjian" class="row" style="gap:8px;margin-top:10px">
+                @csrf @method('put')
+                <button class="btn sm">Simpan nilai UTS/UAS</button>
+                <span class="small muted">Kosongkan bila belum ada nilai. Soal dan jawaban yang diunggah mahasiswa ada di tab <a href="?tab=ujian">UTS &amp; UAS</a>.</span>
+            </form>
+        @endif
+        <p class="small muted" style="margin-top:8px">Nilai akhir = {{ $kelas->bobot_hadir }}% × persentase hadir + {{ $kelas->bobot_tugas }}% × rata-rata tugas + {{ $kelas->bobot_uts }}% × UTS + {{ $kelas->bobot_uas }}% × UAS. Komponen yang belum ada nilainya dilewati dulu.
             Tugas yang sudah lewat tenggat tanpa kiriman dihitung 0; <span class="badge I">?</span> = sudah mengumpulkan tapi belum dinilai (belum dihitung); – = belum lewat tenggat.
-            Huruf: @foreach (config('absen.huruf') as $h => $batas){{ $h }} ≥ {{ $batas }}@if (! $loop->last), @endif @endforeach (atur di config/absen.php).</p>
+            Huruf: @foreach (config('absen.huruf') as $h => $batas){{ $h }} ≥ {{ $batas }}@if (! $loop->last), @endif @endforeach (diatur laboran di menu Sistem).</p>
+
+    @endif
+
+    @if ($tab === 'ujian')
+        <div class="card soal-ujian" id="soal" style="margin-top:0">
+            <div class="row between" style="align-items:flex-start">
+                <div><h2 style="margin:0">UTS &amp; UAS</h2>
+                    <p class="small muted" style="margin:4px 0 0">Soal bisa diunduh asisten kelas ini, dosen pengampu, dan laboran; mahasiswa hanya melihat soal yang dibagikan. Buka pengumpulan agar mahasiswa bisa mengunggah jawabannya.</p></div>
+            </div>
+            @foreach (\App\Models\SoalUjian::JENIS as $j => $label)
+                @php($daftar = $soal->where('jenis', $j))
+                @php($tenggat = $kelas->tenggatUjian($j))
+                <div class="ujian-h">
+                    <h3>{{ $label }}</h3>
+                    <a class="btn soft sm" href="{{ route('asisten.ujian.show', [$kelas, $j]) }}">Periksa jawaban ({{ $jumlahJawaban[$j] ?? 0 }})</a>
+                </div>
+                <div class="ujian-buka small">
+                    @if ($kelas->bukaJawaban($j))
+                        <span class="badge H">Pengumpulan dibuka</span> <span>sampai {{ $tenggat->translatedFormat('d M Y H:i') }}</span>
+                        <form method="post" action="{{ route('asisten.ujian.tenggat', [$kelas, $j]) }}">@csrf @method('put')<input type="hidden" name="tutup" value="1"><button class="link-btn bad">Tutup sekarang</button></form>
+                    @elseif ($tenggat)
+                        <span class="badge grey">Ditutup</span> <span>tenggat {{ $tenggat->translatedFormat('d M Y H:i') }} sudah lewat</span>
+                    @else
+                        <span class="badge grey">Pengumpulan belum dibuka</span>
+                    @endif
+                </div>
+                <form method="post" action="{{ route('asisten.ujian.tenggat', [$kelas, $j]) }}" class="ujian-tenggat">
+                    @csrf @method('put')
+                    <div class="field"><label for="tenggat{{ $j }}">{{ $tenggat ? 'Ubah batas pengumpulan' : 'Batas pengumpulan jawaban' }}</label>
+                        {{-- terisi saran (minggu depan 23.59) agar kolom tidak tampil kosong/menciut di iPhone; belum berlaku sebelum tombol ditekan --}}
+                        <input id="tenggat{{ $j }}" type="datetime-local" name="tenggat" value="{{ ($tenggat && $tenggat->isFuture() ? $tenggat : now()->addWeek()->setTime(23, 59))->format('Y-m-d\TH:i') }}" min="{{ now()->format('Y-m-d\TH:i') }}" required></div>
+                    <button class="btn sm soft">{{ $tenggat ? 'Simpan tenggat' : 'Buka pengumpulan' }}</button>
+                </form>
+                @forelse ($daftar as $s)
+                    @php([$jl, $jc] = $s->jenisFile())
+                    <div class="item soal-item">
+                        <span class="ft {{ $jc }}">{{ $jl }}</span>
+                        <span class="tx"><a href="{{ route('asisten.soal.unduh', [$kelas, $s]) }}"><b>{{ $s->judul }}</b></a>
+                            <span class="meta">{{ \App\Models\Materi::ukuranTeks($s->ukuran) }} · {{ $s->pengunggah?->name ?? 'akun dihapus' }}, {{ $s->created_at->translatedFormat('d M Y') }}</span></span>
+                        <span class="end row" style="gap:8px;flex-wrap:nowrap">
+                            <span class="badge {{ $s->tampil_mahasiswa ? 'H' : 'grey' }}">{{ $s->tampil_mahasiswa ? 'Dibagikan' : 'Tersembunyi' }}</span>
+                            <form method="post" action="{{ route('asisten.soal.tampil', [$kelas, $s]) }}">@csrf @method('put')<button class="link-btn">{{ $s->tampil_mahasiswa ? 'Sembunyikan' : 'Bagikan' }}</button></form>
+                            <form method="post" action="{{ route('asisten.soal.destroy', [$kelas, $s]) }}" data-konfirmasi="{{ 'Hapus soal '.$label.' "'.$s->judul.'"?' }}" data-ok="Hapus">@csrf @method('delete')<button class="link-btn bad">Hapus</button></form>
+                        </span>
+                    </div>
+                @empty
+                    <p class="small muted" style="margin:0">Belum ada soal {{ $label }}.</p>
+                @endforelse
+            @endforeach
+            <form method="post" action="{{ route('asisten.soal.store', $kelas) }}" enctype="multipart/form-data" class="soal-form">
+                @csrf
+                <div class="field"><label for="soalJenis">Ujian</label>
+                    <select id="soalJenis" name="jenis">@foreach (\App\Models\SoalUjian::JENIS as $j => $label)<option value="{{ $j }}" @selected(old('jenis') === $j)>{{ $label }}</option>@endforeach</select></div>
+                <div class="field"><label for="soalJudul">Judul (opsional)</label>
+                    <input id="soalJudul" name="judul" maxlength="150" value="{{ old('judul') }}" placeholder="Mis. Soal UTS paket A"></div>
+                <div class="field"><label for="soalFile">File soal</label>
+                    <input id="soalFile" type="file" name="file" required accept="{{ collect(config('absen.ekstensi_materi'))->map(fn ($e) => '.'.$e)->implode(',') }}">
+                    <span class="small muted">Maks. {{ round(config('absen.maks_unggah_kb') / 1024) }} MB</span></div>
+                <label class="small cek"><input type="checkbox" name="tampil_mahasiswa" value="1" @checked(old('tampil_mahasiswa'))> Bagikan langsung ke mahasiswa</label>
+                <button class="btn sm">Unggah soal</button>
+            </form>
+        </div>
     @endif
 
     @if ($tab === 'log')
@@ -435,21 +522,52 @@
     @endif
 
     @if ($tab === 'pengaturan')
+        @php($bisaAtur = $kelas->diaturOleh(auth()->user()))
         <div class="grid cols-2">
             <div class="card">
-                <h2>Ubah kelas</h2>
-                <form method="post" action="{{ route('asisten.kelas.update', $kelas) }}">
-                    @csrf @method('put')
-                    @include('asisten._form_kelas', ['k' => $kelas])
-                    <button class="btn">Simpan</button>
-                </form>
+                @if ($bisaAtur)
+                    <h2>Ubah kelas</h2>
+                    <form method="post" action="{{ route('asisten.kelas.update', $kelas) }}">
+                        @csrf @method('put')
+                        @include('asisten._form_kelas', ['k' => $kelas])
+                        <button class="btn">Simpan</button>
+                    </form>
+                @else
+                    <h2>Lokasi absen</h2>
+                    <form method="post" action="{{ route('asisten.kelas.update', $kelas) }}">
+                        @csrf @method('put')
+                        @include('asisten._form_kelas', ['k' => $kelas, 'mode' => 'lokasi'])
+                        <button class="btn">Simpan radius</button>
+                    </form>
+                @endif
             </div>
+            <div>
+            <div class="card">
+                @if ($kelas->matkul)
+                    <h2>Diatur dosen</h2>
+                    <p>Kelas ini bagian dari <b>{{ $kelas->matkul->label() }}</b> dengan dosen pengampu <b>{{ $kelas->matkul->dosen->name }}</b>.</p>
+                    <dl class="dl">
+                        <dt>Asisten</dt><dd>{{ $kelas->namaAsisten() }}</dd>
+                        <dt>Jadwal</dt><dd>{{ collect([$kelas->hari, $kelas->ruang])->filter()->implode(' · ') ?: '–' }}</dd>
+                        <dt>Pertemuan</dt><dd>{{ $kelas->jumlah_pertemuan }}</dd>
+                        <dt>Minimal hadir</dt><dd>{{ $kelas->min_hadir }}% (boleh tidak hadir {{ $kelas->maksTidakHadir() }}×)</dd>
+                        <dt>Bobot nilai</dt><dd>hadir {{ $kelas->bobot_hadir }}% · tugas {{ $kelas->bobot_tugas }}% · UTS {{ $kelas->bobot_uts }}% · UAS {{ $kelas->bobot_uas }}%</dd>
+                    </dl>
+                    <p class="small muted" style="margin-bottom:0">@if ($bisaAtur)Sebagai laboran kamu bisa mengubahnya di sini atau di menu Matkul.@else Jadwal, jumlah pertemuan, minimal hadir, dan penghapusan kelas diatur dosen. Bobot nilai bisa kamu ubah di tab Nilai. Hubungi dosen bila ada yang perlu diubah.@endif</p>
+                @else
+                    <h2>Kelas lama</h2>
+                    <p class="muted" style="margin-bottom:0">Kelas ini dibuat sebelum ada mata kuliah dosen. Dosen pengampu bisa memasukkannya ke mata kuliahnya dari menu Matkul; data absen, materi, dan tugas tetap utuh.</p>
+                @endif
+            </div>
+            @if ($bisaAtur)
             <div class="card">
                 <h2>Hapus kelas</h2>
                 <p class="muted">Seluruh data absen kelas ini ikut terhapus. Akun mahasiswa tetap ada.</p>
                 <form method="post" action="{{ route('asisten.kelas.destroy', $kelas) }}" data-konfirmasi="{{ 'Hapus kelas '.$kelas->label().' beserta semua absennya?' }}">
                     @csrf @method('delete')<button class="btn danger">Hapus kelas</button>
                 </form>
+            </div>
+            @endif
             </div>
         </div>
     @endif

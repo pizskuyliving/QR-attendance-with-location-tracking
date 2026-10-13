@@ -10,7 +10,7 @@
 <?php $__env->startSection('body'); ?>
 <div class="mhs-shell">
     <aside class="mhs-side">
-        <a class="mhs-brand" href="<?php echo e(route('mhs.home')); ?>"><img src="/icons/icon-192.png" alt=""><span>FLEX<small>Flexible Learning Experience</small></span></a>
+        <a class="mhs-brand" href="<?php echo e(route('mhs.home')); ?>"><?php echo $__env->make('layouts.logo', ['logoKelas' => ''], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><span>FLEX<small>Flexible Learning Experience</small></span></a>
         <a class="btn accent block" href="<?php echo e(route('mhs.scan')); ?>"><?php echo $ik('scan'); ?>Scan QR Absen</a>
         <nav>
             <?php $__currentLoopData = $menu; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$r, $label, $i, $aktif]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>

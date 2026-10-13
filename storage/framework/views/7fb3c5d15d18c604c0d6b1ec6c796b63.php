@@ -4,7 +4,7 @@
         <div style="min-width:0">
             <div class="eyebrow">Kelas <?php echo e($k->nama_kelas); ?><?php if($k->hari): ?> · <?php echo e($k->hari); ?><?php endif; ?></div>
             <div class="mk-title"><?php echo e($k->mata_kuliah); ?></div>
-            <div class="meta"><?php echo e($k->asisten->name); ?><?php if($k->ruang): ?> · <?php echo e($k->ruang); ?><?php endif; ?></div>
+            <div class="meta"><?php echo e($k->namaAsisten()); ?><?php if($k->ruang): ?> · <?php echo e($k->ruang); ?><?php endif; ?></div>
         </div>
         <?php if($ikut): ?><span class="badge H">Diikuti</span><?php endif; ?>
     </div>

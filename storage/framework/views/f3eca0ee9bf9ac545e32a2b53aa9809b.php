@@ -14,6 +14,21 @@
         <?php endif; ?>
     </div>
 
+    <?php if($catatan->isNotEmpty()): ?>
+        <details class="card catatan-dosen" <?php if($catatan->contains(fn ($c) => ! $c->dibaca_at)): ?> open <?php endif; ?>>
+            <summary><?php echo \App\Support\Ikon::svg('alert'); ?><span><b>Catatan dosen</b>
+                <?php if($baru = $catatan->whereNull('dibaca_at')->count()): ?><span class="badge I"><?php echo e($baru); ?> baru</span><?php endif; ?></span></summary>
+            <ul>
+                <?php $__currentLoopData = $catatan; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $c): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <li class="<?php echo e($c->dibaca_at ? '' : 'baru'); ?>">
+                        <div class="small muted"><?php echo e($c->dosen->name); ?> · <?php echo e($c->created_at->translatedFormat('d M Y H:i')); ?></div>
+                        <div class="isi"><?php echo e($c->isi); ?></div>
+                    </li>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            </ul>
+        </details>
+    <?php endif; ?>
+
     
     <div class="card">
         <?php if($sesiAktif): ?>
@@ -30,7 +45,7 @@
             <form method="post" action="<?php echo e(route('asisten.sesi.buka', $kelas)); ?>" class="row">
                 <?php echo csrf_field(); ?>
                 <b>Nyalakan QR absen hari ini untuk</b>
-                <select name="pertemuan" style="width:auto">
+                <select name="pertemuan" class="pilih-auto">
                     <?php for($p = 1; $p <= $n; $p++): ?>
                         <option value="<?php echo e($p); ?>" <?php if($p === $berikut): echo 'selected'; endif; ?>>Pertemuan <?php echo e($p); ?></option>
                     <?php endfor; ?>
@@ -42,7 +57,7 @@
     </div>
 
     <nav class="tabs">
-        <?php $__currentLoopData = ['absen' => 'Absensi', 'riwayat' => 'Riwayat & Lokasi', 'mahasiswa' => 'Mahasiswa', 'materi' => 'Materi', 'tugas' => 'Tugas', 'nilai' => 'Nilai', 'rekap' => 'Rekap & Export', 'log' => 'Log', 'pengaturan' => 'Pengaturan']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+        <?php $__currentLoopData = ['absen' => 'Absensi', 'riwayat' => 'Riwayat & Lokasi', 'mahasiswa' => 'Mahasiswa', 'materi' => 'Materi', 'tugas' => 'Tugas', 'ujian' => 'UTS & UAS', 'nilai' => 'Nilai', 'rekap' => 'Rekap & Export', 'log' => 'Log', 'pengaturan' => 'Pengaturan']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
             <a href="?tab=<?php echo e($key); ?>" class="<?php echo e($tab === $key ? 'on' : ''); ?>"><?php echo e($label); ?></a>
         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
     </nav>
@@ -97,8 +112,8 @@
             <summary>Isi cepat satu pertemuan</summary>
             <form method="post" action="<?php echo e(route('asisten.absensi.massal', $kelas)); ?>" class="row" style="margin-top:12px" data-konfirmasi="Terapkan status ini ke mahasiswa pada pertemuan yang dipilih?">
                 <?php echo csrf_field(); ?>
-                <select name="pertemuan" style="width:auto"><?php for($p = 1; $p <= $n; $p++): ?><option value="<?php echo e($p); ?>">Pertemuan <?php echo e($p); ?></option><?php endfor; ?></select>
-                <select name="status" style="width:auto">
+                <select name="pertemuan" class="pilih-auto"><?php for($p = 1; $p <= $n; $p++): ?><option value="<?php echo e($p); ?>">Pertemuan <?php echo e($p); ?></option><?php endfor; ?></select>
+                <select name="status" class="pilih-auto">
                     <?php $__currentLoopData = $status; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $k => $v): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($k); ?>" <?php if($k === 'A'): echo 'selected'; endif; ?>>Yang kosong → <?php echo e($v); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     <option value="hapus">Hapus semua absen pertemuan ini</option>
                 </select>
@@ -129,7 +144,7 @@
             <form method="get" class="row">
                 <input type="hidden" name="tab" value="riwayat">
                 <label class="check small"><input type="checkbox" name="curiga" value="1" <?php if(request('curiga')): echo 'checked'; endif; ?> onchange="this.form.submit()"> Hanya yang mencurigakan</label>
-                <select name="p" style="width:auto" onchange="this.form.submit()">
+                <select name="p" class="pilih-auto" onchange="this.form.submit()">
                     <option value="">Semua pertemuan</option>
                     <?php for($p = 1; $p <= $n; $p++): ?><option value="<?php echo e($p); ?>" <?php if(request('p') == $p): echo 'selected'; endif; ?>>Pertemuan <?php echo e($p); ?></option><?php endfor; ?>
                 </select>
@@ -355,12 +370,10 @@
 
     <?php if($tab === 'nilai'): ?>
         <div class="row between" style="margin-bottom:12px;align-items:flex-end">
-            <form method="post" action="<?php echo e(route('asisten.kelas.bobot', $kelas)); ?>" class="row" style="gap:8px">
+            <form method="post" action="<?php echo e(route('asisten.kelas.bobot', $kelas)); ?>" class="bobot-form">
                 <?php echo csrf_field(); ?> <?php echo method_field('put'); ?>
-                <span>Bobot kehadiran</span>
-                <input type="number" name="bobot_hadir" min="0" max="100" value="<?php echo e($kelas->bobot_hadir); ?>" style="width:80px"
-                    oninput="document.getElementById('bobotTugas').textContent = 100 - (+this.value || 0)">
-                <span>% · tugas <b id="bobotTugas"><?php echo e($kelas->bobot_tugas); ?></b>%</span>
+                <div class="small muted" style="margin-bottom:4px">Bobot nilai akhir</div>
+                <?php echo $__env->make('asisten._bobot', ['k' => $kelas], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
                 <button class="btn soft sm">Simpan bobot</button>
             </form>
             <a class="btn soft" href="<?php echo e(route('asisten.absensi.export', [$kelas, 'jenis' => 'nilai'])); ?>"><?php echo \App\Support\Ikon::svg('unduh'); ?> Export nilai ke Excel</a>
@@ -369,7 +382,9 @@
             <table>
                 <thead><tr><th class="c">No</th><th>NPM</th><th class="sticky-col">Nama</th><th class="c">Hadir</th>
                     <?php $__currentLoopData = $nilai->tugas; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $t): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><th class="c" title="<?php echo e($t->judul); ?>"><a href="<?php echo e(route('asisten.tugas.show', $t)); ?>">P<?php echo e($t->pertemuan); ?></a><div class="small muted" style="font-weight:400;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><?php echo e($t->judul); ?></div></th><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                    <th class="c">Rata tugas</th><th class="c">Nilai akhir</th><th class="c">Huruf</th></tr></thead>
+                    <th class="c">Rata tugas</th>
+                    <th class="c">UTS</th><th class="c">UAS</th>
+                    <th class="c">Nilai akhir</th><th class="c">Huruf</th></tr></thead>
                 <tbody>
                 <?php $__empty_1 = true; $__currentLoopData = $nilai->baris; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $i => $b): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                     <tr>
@@ -380,18 +395,90 @@
                             <td class="c"><?php if($v !== null): ?><?php echo e($v + 0); ?><?php elseif(isset($b['kiriman'][$t->id])): ?><span class="badge I" title="Sudah mengumpulkan, belum dinilai">?</span><?php else: ?><span class="muted">–</span><?php endif; ?></td>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         <td class="c"><?php echo e($b['rata_tugas'] ?? '–'); ?></td>
+                            <?php $__currentLoopData = ['uts', 'uas']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $u): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <td class="c"><input type="number" class="cell nilai-ujian" form="formUjian" name="nilai_<?php echo e($u); ?>[<?php echo e($b['mahasiswa']->id); ?>]" min="0" max="100" step="0.01" value="<?php echo e($b[$u] === null ? '' : $b[$u] + 0); ?>" aria-label="Nilai <?php echo e(strtoupper($u)); ?> <?php echo e($b['mahasiswa']->nama); ?>"></td>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         <td class="c"><b><?php echo e($b['akhir'] ?? '–'); ?></b></td>
                         <td class="c"><?php if($b['huruf']): ?><span class="badge <?php echo e(in_array($b['huruf'], ['A', 'B']) ? 'H' : ($b['huruf'] === 'C' ? 'I' : 'A')); ?>"><?php echo e($b['huruf']); ?></span><?php endif; ?></td>
                     </tr>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
-                    <tr><td colspan="<?php echo e(7 + count($nilai->tugas)); ?>" class="muted">Belum ada mahasiswa.</td></tr>
+                    <tr><td colspan="<?php echo e(7 + count($nilai->tugas) + 2); ?>" class="muted">Belum ada mahasiswa.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
         </div>
-        <p class="small muted" style="margin-top:8px">Nilai akhir = <?php echo e($kelas->bobot_hadir); ?>% × persentase hadir + <?php echo e($kelas->bobot_tugas); ?>% × rata-rata tugas.
+        <?php if($nilai->baris): ?>
+            <form method="post" action="<?php echo e(route('asisten.kelas.nilai-ujian', $kelas)); ?>" id="formUjian" class="row" style="gap:8px;margin-top:10px">
+                <?php echo csrf_field(); ?> <?php echo method_field('put'); ?>
+                <button class="btn sm">Simpan nilai UTS/UAS</button>
+                <span class="small muted">Kosongkan bila belum ada nilai. Soal dan jawaban yang diunggah mahasiswa ada di tab <a href="?tab=ujian">UTS &amp; UAS</a>.</span>
+            </form>
+        <?php endif; ?>
+        <p class="small muted" style="margin-top:8px">Nilai akhir = <?php echo e($kelas->bobot_hadir); ?>% × persentase hadir + <?php echo e($kelas->bobot_tugas); ?>% × rata-rata tugas + <?php echo e($kelas->bobot_uts); ?>% × UTS + <?php echo e($kelas->bobot_uas); ?>% × UAS. Komponen yang belum ada nilainya dilewati dulu.
             Tugas yang sudah lewat tenggat tanpa kiriman dihitung 0; <span class="badge I">?</span> = sudah mengumpulkan tapi belum dinilai (belum dihitung); – = belum lewat tenggat.
             Huruf: <?php $__currentLoopData = config('absen.huruf'); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $h => $batas): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><?php echo e($h); ?> ≥ <?php echo e($batas); ?><?php if(! $loop->last): ?>, <?php endif; ?> <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>.</p>
+
+    <?php endif; ?>
+
+    <?php if($tab === 'ujian'): ?>
+        <div class="card soal-ujian" id="soal" style="margin-top:0">
+            <div class="row between" style="align-items:flex-start">
+                <div><h2 style="margin:0">UTS &amp; UAS</h2>
+                    <p class="small muted" style="margin:4px 0 0">Soal bisa diunduh asisten kelas ini, dosen pengampu, dan laboran; mahasiswa hanya melihat soal yang dibagikan. Buka pengumpulan agar mahasiswa bisa mengunggah jawabannya.</p></div>
+            </div>
+            <?php $__currentLoopData = \App\Models\SoalUjian::JENIS; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $j => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <?php ($daftar = $soal->where('jenis', $j)); ?>
+                <?php ($tenggat = $kelas->tenggatUjian($j)); ?>
+                <div class="ujian-h">
+                    <h3><?php echo e($label); ?></h3>
+                    <a class="btn soft sm" href="<?php echo e(route('asisten.ujian.show', [$kelas, $j])); ?>">Periksa jawaban (<?php echo e($jumlahJawaban[$j] ?? 0); ?>)</a>
+                </div>
+                <div class="ujian-buka small">
+                    <?php if($kelas->bukaJawaban($j)): ?>
+                        <span class="badge H">Pengumpulan dibuka</span> <span>sampai <?php echo e($tenggat->translatedFormat('d M Y H:i')); ?></span>
+                        <form method="post" action="<?php echo e(route('asisten.ujian.tenggat', [$kelas, $j])); ?>"><?php echo csrf_field(); ?> <?php echo method_field('put'); ?><input type="hidden" name="tutup" value="1"><button class="link-btn bad">Tutup sekarang</button></form>
+                    <?php elseif($tenggat): ?>
+                        <span class="badge grey">Ditutup</span> <span>tenggat <?php echo e($tenggat->translatedFormat('d M Y H:i')); ?> sudah lewat</span>
+                    <?php else: ?>
+                        <span class="badge grey">Pengumpulan belum dibuka</span>
+                    <?php endif; ?>
+                </div>
+                <form method="post" action="<?php echo e(route('asisten.ujian.tenggat', [$kelas, $j])); ?>" class="ujian-tenggat">
+                    <?php echo csrf_field(); ?> <?php echo method_field('put'); ?>
+                    <div class="field"><label for="tenggat<?php echo e($j); ?>"><?php echo e($tenggat ? 'Ubah batas pengumpulan' : 'Batas pengumpulan jawaban'); ?></label>
+                        
+                        <input id="tenggat<?php echo e($j); ?>" type="datetime-local" name="tenggat" value="<?php echo e(($tenggat && $tenggat->isFuture() ? $tenggat : now()->addWeek()->setTime(23, 59))->format('Y-m-d\TH:i')); ?>" min="<?php echo e(now()->format('Y-m-d\TH:i')); ?>" required></div>
+                    <button class="btn sm soft"><?php echo e($tenggat ? 'Simpan tenggat' : 'Buka pengumpulan'); ?></button>
+                </form>
+                <?php $__empty_1 = true; $__currentLoopData = $daftar; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                    <?php ([$jl, $jc] = $s->jenisFile()); ?>
+                    <div class="item soal-item">
+                        <span class="ft <?php echo e($jc); ?>"><?php echo e($jl); ?></span>
+                        <span class="tx"><a href="<?php echo e(route('asisten.soal.unduh', [$kelas, $s])); ?>"><b><?php echo e($s->judul); ?></b></a>
+                            <span class="meta"><?php echo e(\App\Models\Materi::ukuranTeks($s->ukuran)); ?> · <?php echo e($s->pengunggah?->name ?? 'akun dihapus'); ?>, <?php echo e($s->created_at->translatedFormat('d M Y')); ?></span></span>
+                        <span class="end row" style="gap:8px;flex-wrap:nowrap">
+                            <span class="badge <?php echo e($s->tampil_mahasiswa ? 'H' : 'grey'); ?>"><?php echo e($s->tampil_mahasiswa ? 'Dibagikan' : 'Tersembunyi'); ?></span>
+                            <form method="post" action="<?php echo e(route('asisten.soal.tampil', [$kelas, $s])); ?>"><?php echo csrf_field(); ?> <?php echo method_field('put'); ?><button class="link-btn"><?php echo e($s->tampil_mahasiswa ? 'Sembunyikan' : 'Bagikan'); ?></button></form>
+                            <form method="post" action="<?php echo e(route('asisten.soal.destroy', [$kelas, $s])); ?>" data-konfirmasi="<?php echo e('Hapus soal '.$label.' "'.$s->judul.'"?'); ?>" data-ok="Hapus"><?php echo csrf_field(); ?> <?php echo method_field('delete'); ?><button class="link-btn bad">Hapus</button></form>
+                        </span>
+                    </div>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                    <p class="small muted" style="margin:0">Belum ada soal <?php echo e($label); ?>.</p>
+                <?php endif; ?>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            <form method="post" action="<?php echo e(route('asisten.soal.store', $kelas)); ?>" enctype="multipart/form-data" class="soal-form">
+                <?php echo csrf_field(); ?>
+                <div class="field"><label for="soalJenis">Ujian</label>
+                    <select id="soalJenis" name="jenis"><?php $__currentLoopData = \App\Models\SoalUjian::JENIS; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $j => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?><option value="<?php echo e($j); ?>" <?php if(old('jenis') === $j): echo 'selected'; endif; ?>><?php echo e($label); ?></option><?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?></select></div>
+                <div class="field"><label for="soalJudul">Judul (opsional)</label>
+                    <input id="soalJudul" name="judul" maxlength="150" value="<?php echo e(old('judul')); ?>" placeholder="Mis. Soal UTS paket A"></div>
+                <div class="field"><label for="soalFile">File soal</label>
+                    <input id="soalFile" type="file" name="file" required accept="<?php echo e(collect(config('absen.ekstensi_materi'))->map(fn ($e) => '.'.$e)->implode(',')); ?>">
+                    <span class="small muted">Maks. <?php echo e(round(config('absen.maks_unggah_kb') / 1024)); ?> MB</span></div>
+                <label class="small cek"><input type="checkbox" name="tampil_mahasiswa" value="1" <?php if(old('tampil_mahasiswa')): echo 'checked'; endif; ?>> Bagikan langsung ke mahasiswa</label>
+                <button class="btn sm">Unggah soal</button>
+            </form>
+        </div>
     <?php endif; ?>
 
     <?php if($tab === 'log'): ?>
@@ -434,21 +521,52 @@
     <?php endif; ?>
 
     <?php if($tab === 'pengaturan'): ?>
+        <?php ($bisaAtur = $kelas->diaturOleh(auth()->user())); ?>
         <div class="grid cols-2">
             <div class="card">
-                <h2>Ubah kelas</h2>
-                <form method="post" action="<?php echo e(route('asisten.kelas.update', $kelas)); ?>">
-                    <?php echo csrf_field(); ?> <?php echo method_field('put'); ?>
-                    <?php echo $__env->make('asisten._form_kelas', ['k' => $kelas], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
-                    <button class="btn">Simpan</button>
-                </form>
+                <?php if($bisaAtur): ?>
+                    <h2>Ubah kelas</h2>
+                    <form method="post" action="<?php echo e(route('asisten.kelas.update', $kelas)); ?>">
+                        <?php echo csrf_field(); ?> <?php echo method_field('put'); ?>
+                        <?php echo $__env->make('asisten._form_kelas', ['k' => $kelas], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+                        <button class="btn">Simpan</button>
+                    </form>
+                <?php else: ?>
+                    <h2>Lokasi absen</h2>
+                    <form method="post" action="<?php echo e(route('asisten.kelas.update', $kelas)); ?>">
+                        <?php echo csrf_field(); ?> <?php echo method_field('put'); ?>
+                        <?php echo $__env->make('asisten._form_kelas', ['k' => $kelas, 'mode' => 'lokasi'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+                        <button class="btn">Simpan radius</button>
+                    </form>
+                <?php endif; ?>
             </div>
+            <div>
+            <div class="card">
+                <?php if($kelas->matkul): ?>
+                    <h2>Diatur dosen</h2>
+                    <p>Kelas ini bagian dari <b><?php echo e($kelas->matkul->label()); ?></b> dengan dosen pengampu <b><?php echo e($kelas->matkul->dosen->name); ?></b>.</p>
+                    <dl class="dl">
+                        <dt>Asisten</dt><dd><?php echo e($kelas->namaAsisten()); ?></dd>
+                        <dt>Jadwal</dt><dd><?php echo e(collect([$kelas->hari, $kelas->ruang])->filter()->implode(' · ') ?: '–'); ?></dd>
+                        <dt>Pertemuan</dt><dd><?php echo e($kelas->jumlah_pertemuan); ?></dd>
+                        <dt>Minimal hadir</dt><dd><?php echo e($kelas->min_hadir); ?>% (boleh tidak hadir <?php echo e($kelas->maksTidakHadir()); ?>×)</dd>
+                        <dt>Bobot nilai</dt><dd>hadir <?php echo e($kelas->bobot_hadir); ?>% · tugas <?php echo e($kelas->bobot_tugas); ?>% · UTS <?php echo e($kelas->bobot_uts); ?>% · UAS <?php echo e($kelas->bobot_uas); ?>%</dd>
+                    </dl>
+                    <p class="small muted" style="margin-bottom:0"><?php if($bisaAtur): ?>Sebagai laboran kamu bisa mengubahnya di sini atau di menu Matkul.<?php else: ?> Jadwal, jumlah pertemuan, minimal hadir, dan penghapusan kelas diatur dosen. Bobot nilai bisa kamu ubah di tab Nilai. Hubungi dosen bila ada yang perlu diubah.<?php endif; ?></p>
+                <?php else: ?>
+                    <h2>Kelas lama</h2>
+                    <p class="muted" style="margin-bottom:0">Kelas ini dibuat sebelum ada mata kuliah dosen. Dosen pengampu bisa memasukkannya ke mata kuliahnya dari menu Matkul; data absen, materi, dan tugas tetap utuh.</p>
+                <?php endif; ?>
+            </div>
+            <?php if($bisaAtur): ?>
             <div class="card">
                 <h2>Hapus kelas</h2>
                 <p class="muted">Seluruh data absen kelas ini ikut terhapus. Akun mahasiswa tetap ada.</p>
                 <form method="post" action="<?php echo e(route('asisten.kelas.destroy', $kelas)); ?>" data-konfirmasi="<?php echo e('Hapus kelas '.$kelas->label().' beserta semua absennya?'); ?>">
                     <?php echo csrf_field(); ?> <?php echo method_field('delete'); ?><button class="btn danger">Hapus kelas</button>
                 </form>
+            </div>
+            <?php endif; ?>
             </div>
         </div>
     <?php endif; ?>

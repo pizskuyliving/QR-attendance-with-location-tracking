@@ -2,7 +2,7 @@
 <?php $__env->startSection('body'); ?>
 <div class="auth">
     <div class="card">
-        <img class="logo" src="/icons/icon-192.png" alt="">
+        <?php echo $__env->make('layouts.logo', ['logoKelas' => 'logo'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
         <h1 class="center" style="margin-bottom:0">FLEX</h1>
         <p class="center muted small" style="margin-bottom:14px">Flexible Learning Experience</p>
         <p class="center muted">Masuk dengan email yang kamu daftarkan.</p>

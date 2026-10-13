@@ -66,4 +66,20 @@ class User extends Authenticatable
     {
         return $this->hasMany(Kelas::class, 'asisten_id');
     }
+
+    /** Kelas tempat user menjadi Asisten 2. */
+    public function kelasKedua(): HasMany
+    {
+        return $this->hasMany(Kelas::class, 'asisten2_id');
+    }
+
+    public function matkul(): HasMany
+    {
+        return $this->hasMany(Matkul::class, 'dosen_id');
+    }
+
+    public function peranLabel(): string
+    {
+        return ['admin' => 'Laboran', 'dosen' => 'Dosen', 'asisten' => 'Asisten dosen'][$this->role] ?? $this->role;
+    }
 }

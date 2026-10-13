@@ -14,8 +14,15 @@
         <div class="side">
             <div class="sec-title"><h2>Tugas yang perlu dikumpulkan</h2></div>
             <div class="card flat">
-                <?php if($tugasAktif->count()): ?>
+                <?php if($tugasAktif->count() || $ujianAktif->count()): ?>
                     <ul class="list">
+                        <?php $__currentLoopData = $ujianAktif; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $u): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <li><a class="item" href="<?php echo e(route('mhs.ujian', [$u['kelas'], $u['jenis']])); ?>">
+                                <span class="ft tgs"><?php echo e($u['label']); ?></span>
+                                <span class="tx"><b>Jawaban <?php echo e($u['label']); ?></b><span class="meta"><?php echo e($u['kelas']->mata_kuliah); ?> · Kelas <?php echo e($u['kelas']->nama_kelas); ?></span></span>
+                                <span class="end small"><b style="display:block"><?php echo e($u['tenggat']->diffForHumans(null, true)); ?></b><span class="meta"><?php echo e($u['tenggat']->translatedFormat('d M H:i')); ?></span></span>
+                            </a></li>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         <?php $__currentLoopData = $tugasAktif; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $t): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <li><a class="item" href="<?php echo e(route('mhs.tugas', $t)); ?>">
                                 <span class="ft tgs">TGS</span>
@@ -40,12 +47,13 @@
                                 <div style="min-width:0">
                                     <div class="eyebrow">Kelas <?php echo e($r['kelas']->nama_kelas); ?><?php if($r['kelas']->hari): ?> · <?php echo e($r['kelas']->hari); ?><?php endif; ?></div>
                                     <div class="mk-title"><?php echo e($r['kelas']->mata_kuliah); ?></div>
-                                    <div class="meta"><?php echo e($r['kelas']->asisten->name); ?></div>
+                                    <div class="meta"><?php echo e($r['kelas']->namaAsisten()); ?></div>
                                 </div>
                                 <?php if($r['sesiAktif']): ?><span class="badge live">QR aktif · P<?php echo e($r['sesiAktif']->pertemuan); ?></span><?php endif; ?>
                             </div>
                             <div class="foot"><span class="muted">Hadir <?php echo e($r['hadir']); ?>/<?php echo e($r['kelas']->jumlah_pertemuan); ?></span><b><?php echo e($r['persen']); ?>%</b></div>
                             <div class="bar"><i style="width:<?php echo e($r['persen']); ?>%"></i></div>
+                            <div class="jatah <?php echo e($r['jatah']->level()); ?>"><?php echo \App\Support\Ikon::svg($r['jatah']->level() === 'aman' ? 'cek-bulat' : 'alert'); ?> <?php echo e($r['jatah']->teks()); ?></div>
                         </a>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>

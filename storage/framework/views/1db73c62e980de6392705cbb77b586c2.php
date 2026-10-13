@@ -8,7 +8,7 @@
                 <?php echo csrf_field(); ?> <?php echo method_field('put'); ?>
                 <div class="field"><label>Nama</label><input name="name" value="<?php echo e(old('name', $user->name)); ?>" required></div>
                 <div class="field"><label>Email</label><input type="email" name="email" value="<?php echo e(old('email', $user->email)); ?>" required></div>
-                <p class="small muted">Peran: <?php echo e($user->role === 'admin' ? 'Admin' : 'Asisten dosen'); ?></p>
+                <p class="small muted">Peran: <?php echo e($user->peranLabel()); ?></p>
                 <button class="btn">Simpan</button>
             </form>
         </div>
@@ -100,86 +100,7 @@ unset($__errorArgs, $__bag); ?>
     </div>
 
     <?php if($user->role === 'admin'): ?>
-        <div class="card" id="persetujuan">
-            <div class="row between">
-                <h2 style="margin:0">Pendaftaran asisten menunggu persetujuan</h2>
-                <span class="badge <?php echo e($menunggu->count() ? 'I' : 'grey'); ?>"><?php echo e($menunggu->count()); ?></span>
-            </div>
-            <?php if($menunggu->count()): ?>
-                <div class="table-wrap" style="margin-top:12px">
-                    <table>
-                        <thead><tr><th>Didaftarkan</th><th>Nama</th><th>Email</th><th>Mata kuliah yang diampu</th><th>Aksi</th></tr></thead>
-                        <tbody>
-                        <?php $__currentLoopData = $menunggu; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                            <tr>
-                                <td style="white-space:nowrap"><?php echo e($m->created_at->translatedFormat('d M Y H:i')); ?></td>
-                                <td><?php echo e($m->name); ?></td><td><?php echo e($m->email); ?></td><td><?php echo e($m->keterangan); ?></td>
-                                <td class="row" style="flex-wrap:nowrap;gap:8px">
-                                    <form method="post" action="<?php echo e(route('asisten.akun.setujui', $m)); ?>"><?php echo csrf_field(); ?><button class="btn sm">Setujui</button></form>
-                                    <form method="post" action="<?php echo e(route('asisten.akun.tolak', $m)); ?>" data-konfirmasi="<?php echo e('Tolak pendaftaran '.$m->name.'?'); ?>"><?php echo csrf_field(); ?><button class="btn danger sm">Tolak</button></form>
-                                </td>
-                            </tr>
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php else: ?>
-                <p class="small muted" style="margin-bottom:0">Tidak ada pendaftaran baru. Asisten bisa mendaftar sendiri lewat tautan "Daftar akun asisten" di halaman masuk asisten.</p>
-            <?php endif; ?>
-            <?php if($ditolak->count()): ?>
-                <details style="margin-top:12px">
-                    <summary class="small">Pendaftaran yang ditolak (<?php echo e($ditolak->count()); ?>)</summary>
-                    <div class="table-wrap" style="margin-top:8px"><table><tbody>
-                    <?php $__currentLoopData = $ditolak; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $m): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <tr><td><?php echo e($m->name); ?></td><td><?php echo e($m->email); ?></td><td class="small muted"><?php echo e($m->keterangan); ?></td>
-                            <td class="row" style="flex-wrap:nowrap;gap:12px">
-                                <form method="post" action="<?php echo e(route('asisten.akun.setujui', $m)); ?>"><?php echo csrf_field(); ?><button class="link-btn">Setujui</button></form>
-                                <form method="post" action="<?php echo e(route('asisten.akun.destroy', $m)); ?>" data-konfirmasi="<?php echo e('Hapus data pendaftaran '.$m->name.'? Email ini bisa dipakai mendaftar lagi.'); ?>"><?php echo csrf_field(); ?> <?php echo method_field('delete'); ?><button class="link-btn bad">Hapus</button></form>
-                            </td></tr>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                    </tbody></table></div>
-                </details>
-            <?php endif; ?>
-        </div>
-
-        <div class="card">
-            <h2>Kelola akun asisten</h2>
-            <div class="table-wrap" style="margin-bottom:16px">
-                <table>
-                    <thead><tr><th>Nama</th><th>Email</th><th>Peran</th><th class="c">Kelas</th><th class="c">2FA</th><th>Aksi</th></tr></thead>
-                    <tbody>
-                    <?php $__currentLoopData = $asisten; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $a): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <tr>
-                            <td><?php echo e($a->name); ?></td><td><?php echo e($a->email); ?></td><td><?php echo e($a->role); ?></td><td class="c"><?php echo e($a->kelas_count); ?></td>
-                            <td class="c"><?php echo $a->pakaiDuaLangkah() ? '<span class="badge H">aktif</span>' : '<span class="badge grey">tidak</span>'; ?></td>
-                            <td class="row" style="flex-wrap:nowrap;gap:12px">
-                                <form method="post" action="<?php echo e(route('asisten.akun.reset', $a)); ?>" class="row" style="flex-wrap:nowrap" data-konfirmasi="<?php echo e('Kata sandi baru untuk '.$a->name.' (min. 8 karakter, huruf dan angka):'); ?>" data-tanya="password" data-min="8" data-ok="Simpan" data-placeholder="Kata sandi baru">
-                                    <?php echo csrf_field(); ?> <?php echo method_field('put'); ?><input type="hidden" name="password"><button class="link-btn">Ganti sandi</button>
-                                </form>
-                                <?php if($a->pakaiDuaLangkah() && $a->id !== $user->id): ?>
-                                <form method="post" action="<?php echo e(route('asisten.akun.2fa', $a)); ?>" data-konfirmasi="<?php echo e('Reset 2FA '.$a->name.'? Lakukan hanya bila dia kehilangan HP dan kode cadangan.'); ?>"><?php echo csrf_field(); ?> <?php echo method_field('delete'); ?><button class="link-btn">Reset 2FA</button></form>
-                                <?php endif; ?>
-                                <?php if($a->id !== $user->id): ?>
-                                <form method="post" action="<?php echo e(route('asisten.akun.destroy', $a)); ?>" data-konfirmasi="<?php echo e('Hapus akun '.$a->name.' beserta semua kelasnya?'); ?>"><?php echo csrf_field(); ?> <?php echo method_field('delete'); ?><button class="link-btn bad">Hapus</button></form>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                    </tbody>
-                </table>
-            </div>
-            <h3>Tambah akun</h3>
-            <form method="post" action="<?php echo e(route('asisten.akun.store')); ?>">
-                <?php echo csrf_field(); ?>
-                <div class="grid cols-2" style="gap:0 12px">
-                    <div class="field"><label>Nama</label><input name="name" required></div>
-                    <div class="field"><label>Email</label><input type="email" name="email" required></div>
-                    <div class="field"><label>Kata sandi awal</label><input name="password" minlength="8" required></div>
-                    <div class="field"><label>Peran</label><select name="role"><option value="asisten">Asisten dosen</option><option value="admin">Admin</option></select></div>
-                </div>
-                <button class="btn">Tambah akun</button>
-            </form>
-        </div>
+        <div class="alert info"><?php echo \App\Support\Ikon::svg('user'); ?> Persetujuan asisten, kelola akun, dan tambah akun ada di menu <a href="<?php echo e(route('asisten.laboran.akun')); ?>">Akun</a>.</div>
     <?php endif; ?>
 <?php $__env->stopSection(); ?>
 

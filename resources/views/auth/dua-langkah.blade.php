@@ -3,7 +3,7 @@
 @section('body')
 <div class="auth">
     <div class="card">
-        <img class="logo" src="/icons/icon-192.png" alt="">
+        @include('layouts.logo', ['logoKelas' => 'logo'])
         <h1 class="center">Verifikasi dua langkah</h1>
         <p class="center muted">Buka aplikasi authenticator di HP-mu, lalu masukkan kode 6 angka untuk FLEX.</p>
         @include('layouts.flash')
@@ -18,7 +18,7 @@
         </form>
         <details style="margin-top:14px" class="small">
             <summary>HP hilang atau tidak bisa membuka aplikasi?</summary>
-            <p class="muted">Masukkan salah satu <b>kode cadangan</b> (bentuk XXXX-XXXX) di kolom yang sama. Setiap kode cadangan hanya bisa dipakai sekali. Jika kode cadangan juga hilang, minta admin mereset verifikasi dua langkah akunmu.</p>
+            <p class="muted">Masukkan salah satu <b>kode cadangan</b> (bentuk XXXX-XXXX) di kolom yang sama. Setiap kode cadangan hanya bisa dipakai sekali. Jika kode cadangan juga hilang, minta laboran mereset verifikasi dua langkah akunmu.</p>
         </details>
         <p class="center small" style="margin-top:14px"><a href="{{ route('asisten.login') }}">&larr; Kembali ke halaman masuk</a></p>
     </div>

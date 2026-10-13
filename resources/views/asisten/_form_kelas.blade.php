@@ -1,4 +1,9 @@
+{{-- $mode: penuh (asisten, kelas lama) · dosen (tanpa radius, dengan bobot) · lokasi (hanya radius) --}}
+@php($mode ??= 'penuh')
+@if ($mode !== 'lokasi')
+@if ($mode === 'penuh' && ! $k?->matkul_id)
 <div class="field"><label>Mata kuliah</label><input name="mata_kuliah" value="{{ old('mata_kuliah', $k?->mata_kuliah) }}" placeholder="contoh: Basis Data" required></div>
+@endif
 <div class="grid cols-2" style="gap:0 12px">
     @php($pilihanKelas = array_unique(array_filter([...config('absen.kelas'), $k?->nama_kelas])))
     <div class="field"><label>Kelas</label><select name="nama_kelas" required>
@@ -12,7 +17,14 @@
 <div class="field"><label>Minimal kehadiran (%)</label><input type="number" name="min_hadir" min="0" max="100" value="{{ old('min_hadir', $k?->min_hadir ?? 75) }}" required>
     <div class="small muted" style="margin-top:4px">Izin, sakit, dan alpa mengurangi jatah. Mahasiswa diperingatkan di beranda dan lewat email saat jatahnya habis.@if ($k) Saat ini: boleh tidak hadir {{ $k->maksTidakHadir() }} dari {{ $k->jumlah_pertemuan }} pertemuan.@endif</div>
 </div>
-@if ($k)
+@if ($mode === 'dosen')
+<div class="field"><label>Bobot nilai akhir</label>
+    @include('asisten._bobot', ['k' => $k])
+    <div class="small muted" style="margin-top:4px">Nilai UTS dan UAS diisi asisten di tab Nilai. Asisten juga bisa mengubah bobot ini.</div>
+</div>
+@endif
+@endif
+@if ($k && $mode !== 'dosen')
     <fieldset class="field" style="border:1px solid var(--line);border-radius:12px;padding:12px 14px">
         <legend class="small"><b>Radius kampus</b> <span class="muted">(anti titip absen, opsional)</span></legend>
         <p class="small muted" style="margin:0 0 10px">Scan QR dari luar radius ini ditolak. Paling mudah: buka halaman ini dari HP <b>di dalam ruang kelas</b>, tekan <i>Pakai lokasi saya</i>, lalu Simpan. Kosongkan ketiganya untuk mematikan.</p>

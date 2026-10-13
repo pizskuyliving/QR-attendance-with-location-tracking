@@ -1,10 +1,10 @@
-<?php $__env->startSection('title', 'Masuk Asisten — FLEX'); ?>
+<?php $__env->startSection('title', 'Masuk Asisten & Dosen — FLEX'); ?>
 <?php $__env->startSection('body'); ?>
 <div class="auth">
     <div class="card">
-        <img class="logo" src="/icons/icon-192.png" alt="">
-        <h1 class="center">Dashboard Asisten</h1>
-        <p class="center muted">Kelola kelas, nyalakan QR, dan rekap absen.</p>
+        <?php echo $__env->make('layouts.logo', ['logoKelas' => 'logo'], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
+        <h1 class="center">Masuk Asisten &amp; Dosen</h1>
+        <p class="center muted">Kelola kelas, nyalakan QR, dan pantau rekap absen.</p>
         <?php echo $__env->make('layouts.flash', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
         <form method="post" action="<?php echo e(route('asisten.login')); ?>">
             <?php echo csrf_field(); ?>

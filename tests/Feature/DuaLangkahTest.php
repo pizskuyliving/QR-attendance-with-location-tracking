@@ -70,7 +70,7 @@ class DuaLangkahTest extends TestCase
 
         $this->post('/asisten/login/2fa', ['kode' => '123456'])->assertSessionHasErrors('kode');
         $this->assertGuest('web');
-        $this->post('/asisten/login/2fa', ['kode' => $this->kodeSekarang($rahasia, 1)])->assertRedirect(route('asisten.dashboard'));
+        $this->post('/asisten/login/2fa', ['kode' => $this->kodeSekarang($rahasia, 1)])->assertRedirect(route('masuk.cek', ['ke' => '/asisten']));
         $this->assertAuthenticatedAs($u, 'web');
     }
 
@@ -79,7 +79,7 @@ class DuaLangkahTest extends TestCase
         [$rahasia] = $this->aktifkan();
         $kode = $this->kodeSekarang($rahasia, 1);
         $this->loginSandi();
-        $this->post('/asisten/login/2fa', ['kode' => $kode])->assertRedirect(route('asisten.dashboard'));
+        $this->post('/asisten/login/2fa', ['kode' => $kode])->assertRedirect(route('masuk.cek', ['ke' => '/asisten']));
         auth('web')->logout();
         $this->flushSession();
 
@@ -92,7 +92,7 @@ class DuaLangkahTest extends TestCase
     {
         [, $cadangan] = $this->aktifkan();
         $this->loginSandi();
-        $this->post('/asisten/login/2fa', ['kode' => strtolower($cadangan[0])])->assertRedirect(route('asisten.dashboard'));
+        $this->post('/asisten/login/2fa', ['kode' => strtolower($cadangan[0])])->assertRedirect(route('masuk.cek', ['ke' => '/asisten']));
         $this->assertCount(7, $this->asisten->fresh()->dua_langkah_cadangan);
         auth('web')->logout();
         $this->flushSession();
@@ -121,7 +121,7 @@ class DuaLangkahTest extends TestCase
 
     public function test_akun_tanpa_2fa_tetap_login_biasa_dan_diingatkan(): void
     {
-        $this->loginSandi()->assertRedirect(route('asisten.dashboard'));
+        $this->loginSandi()->assertRedirect(route('masuk.cek', ['ke' => '/asisten']));
         $this->get(route('asisten.dashboard'))->assertSee('Aktifkan 2FA');
     }
 
@@ -142,7 +142,7 @@ class DuaLangkahTest extends TestCase
         $admin = User::create(['name' => 'Admin', 'email' => 'admin@kampus.ac.id', 'password' => 'admin123', 'role' => 'admin']);
         $this->actingAs($this->asisten->fresh(), 'web')->delete(route('asisten.akun.2fa', $this->asisten))->assertForbidden();
 
-        $this->actingAs($admin, 'web')->get(route('asisten.profil'))->assertSee('Reset 2FA');
+        $this->actingAs($admin, 'web')->get(route('asisten.laboran.akun'))->assertSee('Reset 2FA');
         $this->delete(route('asisten.akun.2fa', $this->asisten))->assertSessionHas('ok');
         $this->assertFalse($this->asisten->fresh()->pakaiDuaLangkah());
         $this->assertTrue(LogAktivitas::where('aksi', '2fa_reset')->exists());

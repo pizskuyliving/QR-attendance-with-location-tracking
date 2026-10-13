@@ -7,7 +7,7 @@
         <div class="foot-in">
             <div class="foot-top">
                 <div class="foot-brand">
-                    <img src="/icons/icon-192.png" alt="">
+                    @include('layouts.logo', ['logoKelas' => ''])
                     <div><b>{{ $c['nama'] }}</b><span>{{ $c['nama_panjang'] }}</span></div>
                 </div>
                 <p>Absensi QR, materi perkuliahan, tugas, dan rekap nilai dalam satu tempat.</p>

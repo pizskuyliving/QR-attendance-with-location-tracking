@@ -111,14 +111,18 @@ class PilihKelasTest extends TestCase
             ->assertSee('50421099 Budi (kelas B) bergabung ke Basis Data — Kelas B');
     }
 
-    public function test_asisten_hanya_bisa_memilih_kelas_a_sampai_g(): void
+    public function test_kelas_hanya_a_sampai_g_dan_dibuat_dosen(): void
     {
-        $this->actingAs($this->asisten, 'web');
-        $this->post(route('asisten.kelas.store'), ['mata_kuliah' => 'Jaringan', 'nama_kelas' => '3KA01', 'jumlah_pertemuan' => 8])->assertSessionHasErrors('nama_kelas');
-        $this->post(route('asisten.kelas.store'), ['mata_kuliah' => 'Jaringan', 'nama_kelas' => 'C', 'jumlah_pertemuan' => 8])->assertSessionHasNoErrors();
+        $dosen = User::create(['name' => 'Dosen', 'email' => 'dosen@kampus.ac.id', 'password' => 'dosen12345', 'role' => 'dosen']);
+        $mk = \App\Models\Matkul::create(['dosen_id' => $dosen->id, 'nama' => 'Jaringan']);
+        $this->actingAs($dosen, 'web');
+        $this->post(route('asisten.matkul.kelas.store', $mk), ['nama_kelas' => '3KA01', 'jumlah_pertemuan' => 8])->assertSessionHasErrors('nama_kelas');
+        $this->post(route('asisten.matkul.kelas.store', $mk), ['nama_kelas' => 'C', 'jumlah_pertemuan' => 8])->assertSessionHasNoErrors();
+        $this->assertSame('Jaringan', Kelas::where('matkul_id', $mk->id)->value('mata_kuliah'));
 
-        // kelas lama dengan nama di luar daftar tetap bisa disimpan
+        // kelas lama dengan nama di luar daftar tetap bisa disimpan asistennya
         $lama = $this->kelas('3KA01', 'Basis Data');
-        $this->put(route('asisten.kelas.update', $lama), ['mata_kuliah' => 'Basis Data Lanjut', 'nama_kelas' => '3KA01', 'jumlah_pertemuan' => 8])->assertSessionHasNoErrors();
+        $this->actingAs($this->asisten, 'web')
+            ->put(route('asisten.kelas.update', $lama), ['mata_kuliah' => 'Basis Data Lanjut', 'nama_kelas' => '3KA01', 'jumlah_pertemuan' => 8])->assertSessionHasNoErrors();
     }
 }
