@@ -21,7 +21,7 @@ class LaboranController extends Controller
         $cari = trim((string) $request->query('cari'));
         $dosen = User::where('role', 'dosen')
             ->when($cari !== '', fn ($q) => $q->where(fn ($w) => $w->whereLike('name', "%{$cari}%")->orWhereLike('email', "%{$cari}%")))
-            ->with(['matkul' => fn ($q) => $q->orderBy('nama'), 'matkul.kelas.asisten', 'matkul.kelas.asisten2', 'matkul.kelas.mahasiswa'])
+            ->with(['matkul' => fn ($q) => $q->orderBy('nama'), 'matkul.kelas' => fn ($q) => $q->withCount('mahasiswa'), 'matkul.kelas.asisten', 'matkul.kelas.asisten2'])
             ->orderBy('name')->get()
             ->map(function (User $d) {
                 $matkul = $d->matkul->map(fn (Matkul $m) => ['matkul' => $m, 'kelas' => $m->kelas->map(fn (Kelas $k) => Pantauan::untuk($k))]);

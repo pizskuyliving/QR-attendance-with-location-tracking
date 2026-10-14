@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Berkas;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
 class Materi extends Model
 {
+    use Berkas;
+
     protected $table = 'materi';
 
     protected $fillable = ['kelas_id', 'pertemuan', 'judul', 'path', 'nama_file', 'ukuran', 'url', 'user_id'];
@@ -20,29 +23,6 @@ class Materi extends Model
     public function kelas(): BelongsTo
     {
         return $this->belongsTo(Kelas::class);
-    }
-
-    public function adalahFile(): bool
-    {
-        return $this->path !== null;
-    }
-
-    /** Label & warna chip jenis file: [teks, kelas CSS]. */
-    public function jenis(): array
-    {
-        if (! $this->adalahFile()) {
-            return str_contains((string) $this->url, 'youtu') ? ['VID', 'vid'] : ['URL', 'url'];
-        }
-
-        return match (strtolower(pathinfo($this->nama_file, PATHINFO_EXTENSION))) {
-            'ppt', 'pptx' => ['PPT', 'ppt'],
-            'pdf' => ['PDF', 'pdf'],
-            'doc', 'docx' => ['DOC', 'doc'],
-            'xls', 'xlsx', 'csv' => ['XLS', 'xls'],
-            'zip', 'rar', '7z' => ['ZIP', 'zip'],
-            'png', 'jpg', 'jpeg', 'gif', 'webp' => ['IMG', 'img'],
-            default => ['FILE', 'zip'],
-        };
     }
 
     public static function ukuranTeks(?int $byte): string

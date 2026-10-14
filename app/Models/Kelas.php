@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 
 class Kelas extends Model
@@ -141,6 +142,12 @@ class Kelas extends Model
     public function catatanDosen(): HasMany
     {
         return $this->hasMany(CatatanDosen::class)->latest('id');
+    }
+
+    /** Hanya catatan terbaru, untuk ringkasan di halaman dosen (tanpa memuat semua catatan). */
+    public function catatanTerakhir(): HasOne
+    {
+        return $this->hasOne(CatatanDosen::class)->latestOfMany();
     }
 
     public function log(): HasMany

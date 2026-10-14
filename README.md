@@ -23,8 +23,8 @@ QR berganti setiap 15 detik dan ditandatangani (HMAC), jadi foto QR yang dikirim
 | 2 | Kelola data mahasiswa: smart import Excel, tambah manual, edit, hapus, reset sandi | Selesai |
 | 2 | Kelola kelas & matkul: daftar kelas diampu, tambah/ubah/hapus kelas, jumlah pertemuan (default 8) | Selesai |
 | 2 | Rekap otomatis: per pertemuan, per mahasiswa, persentase kehadiran; edit/hapus absen per sel | Selesai |
-| 3 | Export rekap ke Excel: lengkap / ringkas, siap cetak (A4 landscape, 1 halaman lebar, kolom tanda tangan) | Selesai |
-| 3 | Login: mahasiswa (email), asisten (email), halaman lupa kata sandi | Selesai |
+| 3 | Export rekap absen + nilai ke satu file Excel, siap cetak (A4 landscape, 1 halaman lebar, kolom tanda tangan) | Selesai |
+| 3 | Login: mahasiswa (email), asisten (email), lupa kata sandi lewat kode email | Selesai |
 | 4 | Profil: ubah profil, ganti kata sandi, kelola akun asisten (khusus admin) | Selesai |
 | + | Daftar akun mahasiswa (kelas A–G) + verifikasi kode via email; mahasiswa memilih mata kuliah sendiri di akunnya; captcha anti-bot Cloudflare Turnstile di login & daftar | Selesai |
 | + | Lokasi GPS saat scan (wajib), tampil di riwayat mahasiswa, layar QR, tab Riwayat & Lokasi, dan sheet Excel "Riwayat Scan" | Selesai |
@@ -33,7 +33,7 @@ QR berganti setiap 15 detik dan ditandatangani (HMAC), jadi foto QR yang dikirim
 | + | Verifikasi dua langkah (2FA) untuk asisten & admin: kode 6 angka dari aplikasi authenticator + kode cadangan | Selesai |
 | + | Asisten daftar sendiri, akun aktif setelah disetujui admin | Selesai |
 | + | Materi per pertemuan (file PPT/PDF/dll. atau tautan), bisa dibuka mahasiswa tanpa syarat absen | Selesai |
-| + | Tugas & laporan: tenggat, pengumpulan file dari HP, tanda terlambat, penilaian + komentar, unduh semua (ZIP) | Selesai |
+| + | Tugas & laporan: tenggat, lampiran soal dari asisten (banyak file + tautan), pengumpulan file dari HP, tanda terlambat, penilaian + komentar, unduh semua (ZIP) | Selesai |
 | + | Rekap nilai akhir: bobot kehadiran & tugas per kelas, huruf A–E, export Excel | Selesai |
 
 ## Menjalankan di komputer
@@ -55,15 +55,11 @@ Akun awal dari seeder (ganti kata sandinya setelah login):
 
 | Peran | Login | Kata sandi |
 |---|---|---|
-| Admin | admin@kampus.ac.id | admin123 |
+| Laboran | admin@kampus.ac.id | admin123 |
 | Asisten | asisten@kampus.ac.id | asisten123 |
-| Mahasiswa contoh (kelas A, sudah ikut Basis Data) | 50421001@contoh.ac.id s.d. 50421010@contoh.ac.id | NPM-nya, mis. 50421001 |
+| Dosen | dosen@kampus.ac.id | dosen123 |
 
-Akun mahasiswa dummy tambahan untuk uji coba (5 per kelas A–G, belum ikut matkul, tidak menghapus data lain):
-```
-php artisan db:seed --class=MahasiswaDummySeeder
-```
-Login `604{n}10{01–05}@uji.ac.id` dengan n = 1 (kelas A) s.d. 7 (kelas G), kata sandi `uji12345`. Contoh: `60411001@uji.ac.id` (kelas A), `60471005@uji.ac.id` (kelas G).
+Seeder tidak membuat akun mahasiswa. Mahasiswa mendaftar sendiri lewat halaman **Daftar** (email kampus + kode verifikasi).
 
 ## Captcha anti-bot (Cloudflare Turnstile)
 
@@ -105,8 +101,8 @@ Bila HP hilang: masuk dengan salah satu kode cadangan (sekali pakai). Bila kode 
 ## Materi, tugas & nilai
 
 - **Materi** (tab Materi): unggah file (PPT, PDF, Word, Excel, ZIP, gambar) atau tempel tautan (YouTube, Google Drive) per pertemuan. Semua mahasiswa yang mengikuti mata kuliah bisa membuka dan mengunduh dari HP, **tanpa harus absen dulu**. Mahasiswa membukanya dengan mengetuk kartu mata kuliah di Beranda.
-- **Tugas/laporan** (tab Tugas): tentukan pertemuan, judul, petunjuk, tenggat, dan apakah kiriman terlambat masih diterima. Mahasiswa mengunggah satu file (bisa diganti sampai dinilai); kiriman setelah tenggat ditandai *terlambat*. Asisten memberi nilai 0–100 dan komentar langsung di tabel, dan bisa mengunduh semua kiriman sekaligus sebagai ZIP (nama file diawali NPM).
-- **Nilai** (tab Nilai): nilai akhir = bobot hadir × persentase hadir + bobot tugas × rata-rata tugas (default 20/80, bisa diubah per kelas). Tugas yang lewat tenggat tanpa kiriman dihitung 0; kiriman yang belum dinilai dan tugas yang belum lewat tenggat tidak dihitung. Huruf: A ≥ 85, B ≥ 70, C ≥ 55, D ≥ 40, selain itu E (ubah di `config/absen.php`). Export: tombol *Export nilai ke Excel*, dan export *lengkap* otomatis menambah sheet "Rekap Nilai".
+- **Tugas/laporan** (tab Tugas): tentukan pertemuan, judul, petunjuk, tenggat, dan apakah kiriman terlambat masih diterima. Asisten bisa melampirkan beberapa file (soal, template laporan, data; maks. 10 per simpan, jenis sama dengan materi) dan beberapa tautan (satu per baris), total maks. 20 lampiran per tugas; tambah atau hapus lampiran di halaman tugas. Mahasiswa peserta kelas mengunduh lampiran dari halaman tugasnya. Mahasiswa mengunggah satu file (bisa diganti sampai dinilai); kiriman setelah tenggat ditandai *terlambat*. Asisten memberi nilai 0–100 dan komentar langsung di tabel, dan bisa mengunduh semua kiriman sekaligus sebagai ZIP (nama file diawali NPM).
+- **Rekap & Nilai** (satu tab): kehadiran H/I/S/A, nilai tiap tugas, UTS/UAS, nilai akhir, dan huruf dalam satu tabel per mahasiswa, plus rekap per pertemuan. Nilai akhir = rata-rata berbobot kehadiran, tugas, UTS, dan UAS (bobot per kelas, jumlah 100). Tugas yang lewat tenggat tanpa kiriman dihitung 0; kiriman yang belum dinilai dan tugas yang belum lewat tenggat tidak dihitung. Huruf diatur laboran di menu Sistem. Export: satu tombol *Unduh rekap Excel* berisi sheet Rekap (absen + nilai + tanda tangan), Nilai Tugas, Per Pertemuan, dan Riwayat Scan.
 - File disimpan di `storage/app/private/` (tidak bisa diakses langsung dari URL). **Ikut backup folder ini** bersama `database/database.sqlite`.
 - Batas ukuran unggahan diatur `MAKS_UNGGAH_KB` di `.env` (default 20480 = 20 MB). **Penting di Laragon/XAMPP:** batas bawaan PHP hanya 2 MB, jadi naikkan di `php.ini` (Laragon: menu → PHP → php.ini) lalu restart:
 
@@ -125,7 +121,18 @@ Mahasiswa hanya bisa mendaftar dengan email mahasiswa UIR, format `nama@student.
 ```
 DOMAIN_EMAIL_MAHASISWA=student.uir.ac.id
 ```
-Lebih dari satu domain dipisahkan koma; kosongkan untuk menerima semua email. Jalankan `php artisan config:clear` setelah mengubahnya. Akun contoh dan dummy yang dibuat lewat seeder tidak terpengaruh.
+Lebih dari satu domain dipisahkan koma; kosongkan untuk menerima semua email. Jalankan `php artisan config:clear` setelah mengubahnya.
+
+## Lupa kata sandi
+
+Di halaman masuk, tekan **Lupa kata sandi?**, pilih jenis akun (mahasiswa / asisten / dosen / laboran), lalu isi email. FLEX mengirim kode 6 angka yang berlaku 15 menit. Masukkan kode itu beserta kata sandi baru. Setelah berhasil, "ingat saya" di perangkat lain ikut tidak berlaku, dan kejadiannya tercatat di log.
+
+- Pesan yang muncul selalu sama, terdaftar atau tidak, agar halaman ini tidak bisa dipakai menebak email yang terdaftar.
+- Maksimal 5 kode salah. Kirim ulang paling cepat 60 detik sekali.
+- Hanya mahasiswa yang sudah verifikasi email dan staf berstatus aktif yang bisa memakai jalur ini.
+- Verifikasi dua langkah (2FA) tetap diminta saat masuk sesudahnya.
+- Mahasiswa yang tidak bisa membuka emailnya tetap bisa minta asisten membuat kata sandi sementara (tab Mahasiswa → Reset sandi).
+- Pengiriman memakai pengaturan email yang sama dengan kode verifikasi pendaftaran (bagian di bawah).
 
 ## Mengirim email kode verifikasi
 

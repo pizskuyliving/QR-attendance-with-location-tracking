@@ -14,7 +14,7 @@
             <?php echo csrf_field(); ?>
             <div class="field">
                 <label for="peran">Masuk sebagai</label>
-                <select id="peran" name="peran" data-peran-pilih>
+                <select id="peran" name="peran" data-peran-pilih required>
                     <?php $__currentLoopData = ['mahasiswa' => 'Mahasiswa', 'asisten' => 'Asisten dosen', 'dosen' => 'Dosen', 'admin' => 'Laboran']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $nilai => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <option value="<?php echo e($nilai); ?>" <?php if($peran === $nilai): echo 'selected'; endif; ?>><?php echo e($label); ?></option>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
@@ -35,7 +35,7 @@
         <p class="center" style="margin-top:14px" data-peran="mahasiswa" <?php if($peran !== 'mahasiswa'): ?> hidden <?php endif; ?>><?php if(config('absen.daftar_mahasiswa')): ?>Belum punya akun? <a href="<?php echo e(route('daftar')); ?>"><b>Daftar di sini</b></a><?php else: ?><span class="small muted">Pendaftaran akun mahasiswa sedang ditutup laboran.</span><?php endif; ?></p>
         <p class="center" style="margin-top:14px" data-peran="asisten" <?php if($peran !== 'asisten'): ?> hidden <?php endif; ?>><?php if(config('absen.daftar_asisten')): ?>Belum punya akun? <a href="<?php echo e(route('asisten.daftar')); ?>"><b>Daftar akun asisten</b></a><?php else: ?><span class="small muted">Pendaftaran akun asisten sedang ditutup laboran.</span><?php endif; ?></p>
         <p class="center small muted" style="margin-top:14px" data-peran="dosen admin" <?php if(! in_array($peran, ['dosen', 'admin'], true)): ?> hidden <?php endif; ?>>Akun dosen dan laboran dibuat oleh laboran.</p>
-        <p class="center small"><a href="<?php echo e(route('lupa')); ?>">Lupa kata sandi?</a></p>
+        <p class="center small"><a href="<?php echo e(route('lupa', ['peran' => $peran])); ?>" data-lupa>Lupa kata sandi?</a></p>
     </div>
     <?php echo $__env->make('layouts.footer', ['ringkas' => true], array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 </div>
@@ -44,6 +44,8 @@
 <script>
 document.querySelector('[data-peran-pilih]').addEventListener('change', e => {
     document.querySelectorAll('[data-peran]').forEach(el => el.hidden = !el.dataset.peran.split(' ').includes(e.target.value));
+    const lupa = document.querySelector('[data-lupa]');
+    lupa.href = lupa.href.replace(/peran=[a-z]+/, 'peran=' + e.target.value);
 });
 </script>
 <?php $__env->stopPush(); ?>

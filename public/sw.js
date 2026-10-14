@@ -1,7 +1,7 @@
 // Service worker sederhana: aset statis di-cache, halaman selalu diambil dari jaringan
 // (data absen harus selalu terbaru), dengan halaman offline saat tidak ada jaringan.
-const CACHE = 'absenqr-v37';
-const ASET = ['/css/app.css?v=37', '/js/ui.js?v=37', '/vendor/html5-qrcode.min.js', '/vendor/qrcode.js', '/img/logo-gelap.png', '/img/logo-terang.png', '/offline.html', '/fonts/dm-sans.woff2', '/fonts/fredoka.woff2', '/fonts/space-mono.woff2'];
+const CACHE = 'absenqr-v41';
+const ASET = ['/css/app.css?v=41', '/js/ui.js?v=41', '/vendor/html5-qrcode.min.js', '/vendor/qrcode.js', '/img/logo-gelap.png', '/img/logo-terang.png', '/offline.html', '/fonts/dm-sans.woff2', '/fonts/fredoka.woff2', '/fonts/space-mono.woff2'];
 
 self.addEventListener('install', e => {
     e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASET)).then(() => self.skipWaiting()));

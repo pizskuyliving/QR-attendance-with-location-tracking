@@ -79,7 +79,7 @@
                                 <div class="jatah">{!! \App\Support\Ikon::svg('cek-bulat') !!} Tidak ada yang perlu ditindaklanjuti</div>
                             @endif
                             @if ($k->asisten || $k->asisten2)
-                                @php($terakhir = $k->catatanDosen->first())
+                                @php($terakhir = $k->catatanTerakhir)
                                 <details class="catatan-kirim">
                                     <summary class="small">Kirim catatan ke asisten
                                         @if ($terakhir)<span class="muted">· terakhir {{ $terakhir->created_at->diffForHumans() }}, {{ $terakhir->dibaca_at ? 'sudah dibaca' : 'belum dibaca' }}</span>@endif

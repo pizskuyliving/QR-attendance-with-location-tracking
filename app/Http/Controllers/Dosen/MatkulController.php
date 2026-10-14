@@ -30,7 +30,7 @@ class MatkulController extends Controller
     public function index(Request $request)
     {
         $u = $request->user();
-        $matkul = Matkul::with(['dosen', 'kelas.asisten', 'kelas.asisten2', 'kelas.mahasiswa', 'kelas.catatanDosen', 'kelas.soalUjian'])
+        $matkul = Matkul::with(['dosen', 'kelas' => fn ($q) => $q->withCount('mahasiswa'), 'kelas.asisten', 'kelas.asisten2', 'kelas.catatanTerakhir', 'kelas.soalUjian'])
             ->when($u->role !== 'admin', fn ($q) => $q->where('dosen_id', $u->id))
             ->orderBy('nama')->get()
             ->map(fn (Matkul $m) => ['matkul' => $m, 'kelas' => $m->kelas->map(fn (Kelas $k) => Pantauan::untuk($k))]);
@@ -74,7 +74,7 @@ class MatkulController extends Controller
             ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);
     }
 
-    /** Catatan dosen untuk asisten kelas: tampil di dashboard & halaman kelas asisten, dan dikirim lewat email. */
+    /** Catatan dosen untuk asisten kelas: masuk ke menu Pesan asisten, dan dikirim lewat email. */
     public function catatan(Request $request, Matkul $matkul, Kelas $kelas)
     {
         self::pastikanMilik($request, $matkul);
@@ -94,17 +94,17 @@ class MatkulController extends Controller
                     "Catatan dosen: {$kelas->label()}",
                     $a->name,
                     ["{$request->user()->name} mengirim catatan untuk kelas {$kelas->label()}:", $isi],
-                    route('asisten.kelas.show', $kelas),
-                    'Buka kelas',
+                    route('asisten.pesan', ['kelas' => $kelas->id]),
+                    'Buka pesan',
                 ));
             }
         } catch (\Throwable $e) {
             Log::error('Gagal kirim email catatan dosen', ['kelas' => $kelas->id, 'error' => $e->getMessage()]);
 
-            return back()->with('ok', "Catatan tersimpan dan tampil di dashboard {$nama}, tetapi emailnya gagal terkirim.");
+            return back()->with('ok', "Catatan tersimpan dan masuk ke menu Pesan {$nama}, tetapi emailnya gagal terkirim.");
         }
 
-        return back()->with('ok', "Catatan terkirim ke {$nama} (dashboard dan email).");
+        return back()->with('ok', "Catatan terkirim ke {$nama} (menu Pesan dan email).");
     }
 
     public function destroy(Request $request, Matkul $matkul)

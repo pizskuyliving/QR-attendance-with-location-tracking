@@ -24,6 +24,25 @@
             @if ($tugas->deskripsi)
                 <div class="card"><div class="eyebrow" style="margin-bottom:6px">Petunjuk</div><div style="white-space:pre-line">{{ $tugas->deskripsi }}</div></div>
             @endif
+            @if ($tugas->lampiran->isNotEmpty())
+                <div class="card flat">
+                    <div style="padding:14px 16px 0"><b>Lampiran dari asisten</b> <span class="meta">({{ $tugas->lampiran->count() }})</span></div>
+                    @foreach ($tugas->lampiran as $l)
+                        @php([$jl, $jc] = $l->jenis())
+                        @if ($l->adalahFile())
+                            <a class="item" href="{{ route('mhs.tugas.lampiran', [$tugas, $l]) }}">
+                                <span class="ft {{ $jc }}">{{ $jl }}</span>
+                                <span class="tx"><b>{{ $l->nama_file }}</b><span class="meta">Unduh · {{ \App\Models\Materi::ukuranTeks($l->ukuran) }}</span></span>
+                            </a>
+                        @else
+                            <a class="item" href="{{ $l->url }}" target="_blank" rel="noopener noreferrer">
+                                <span class="ft {{ $jc }}">{{ $jl }}</span>
+                                <span class="tx"><b style="overflow-wrap:anywhere">{{ $l->url }}</b><span class="meta">Buka tautan · {{ parse_url($l->url, PHP_URL_HOST) }}</span></span>
+                            </a>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
             @if ($kiriman?->dinilai())
                 <div class="card">
                     <div class="row between" style="flex-wrap:nowrap">

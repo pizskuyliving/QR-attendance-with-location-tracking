@@ -43,6 +43,9 @@ class AksesAsistenTest extends TestCase
     {
         $this->get(route('asisten.login'))
             ->assertHeader('X-Frame-Options', 'DENY')
-            ->assertHeader('X-Content-Type-Options', 'nosniff');
+            ->assertHeader('X-Content-Type-Options', 'nosniff')
+            ->assertHeaderMissing('Strict-Transport-Security'); // http biasa: tanpa HSTS
+        $this->get(str_replace('http://', 'https://', route('asisten.login')))
+            ->assertHeader('Strict-Transport-Security', 'max-age=31536000');
     }
 }

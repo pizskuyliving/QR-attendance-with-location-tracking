@@ -14,6 +14,7 @@ use App\Services\RekapNilai;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\TestCase;
 
 class MateriTugasTest extends TestCase
@@ -186,9 +187,21 @@ class MateriTugasTest extends TestCase
         $this->assertSame(60, $this->kelas->fresh()->bobot_tugas);
         $this->put(route('asisten.kelas.bobot', $this->kelas), $bobot(140, 0))->assertSessionHasErrors('bobot_hadir');
         $this->put(route('asisten.kelas.bobot', $this->kelas), $bobot(20, 40, 20, 30))->assertSessionHasErrors('bobot_hadir'); // jumlah 110
-        $this->get(route('asisten.kelas.show', [$this->kelas, 'tab' => 'nilai']))->assertOk()->assertSee('1001')->assertSee('91');
-        $res = $this->get(route('asisten.absensi.export', [$this->kelas, 'jenis' => 'nilai']))->assertOk();
+        $this->get(route('asisten.kelas.show', [$this->kelas, 'tab' => 'rekap']))->assertOk()->assertSee('1001')->assertSee('91')->assertSee('Unduh rekap Excel');
+        $this->get(route('asisten.kelas.show', [$this->kelas, 'tab' => 'nilai']))->assertOk()->assertSee('Simpan bobot'); // tautan lama tetap jalan
+        $res = $this->get(route('asisten.absensi.export', $this->kelas))->assertOk();
         $this->assertStringContainsString('spreadsheet', $res->headers->get('content-type'));
+
+        // satu file: lembar Rekap memuat absen dan nilai sekaligus
+        $file = tempnam(sys_get_temp_dir(), 'xl');
+        file_put_contents($file, $res->streamedContent());
+        $book = IOFactory::load($file);
+        unlink($file);
+        $this->assertSame(['Rekap', 'Nilai Tugas', 'Per Pertemuan', 'Riwayat Scan'], $book->getSheetNames());
+        $kepala = $book->getSheet(0)->rangeToArray('A9:Z9')[0];
+        foreach (['P1', 'H', '% Hadir', 'Tugas', 'UTS', 'UAS', 'Nilai akhir', 'Huruf'] as $k) {
+            $this->assertContains($k, $kepala);
+        }
     }
 
     public function test_hapus_mahasiswa_tugas_dan_kelas_ikut_menghapus_file(): void

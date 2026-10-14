@@ -105,7 +105,7 @@
                 <div class="field"><label>Email</label><input type="email" name="email" value="{{ old('email') }}" required></div>
                 <div class="field"><label>Kata sandi awal</label><input name="password" minlength="8" required></div>
                 <div class="field"><label>Peran</label>
-                    <select name="role">
+                    <select name="role" required>
                         @foreach (['asisten' => 'Asisten dosen', 'dosen' => 'Dosen', 'admin' => 'Laboran'] as $k => $v)
                             <option value="{{ $k }}" @selected(old('role', $tambahPeran) === $k)>{{ $v }}</option>
                         @endforeach

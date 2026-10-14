@@ -83,9 +83,8 @@ class AbsensiController extends Controller
     public function export(Request $request, Kelas $kelas)
     {
         KelasController::pastikanBisaLihat($request, $kelas);
-        $jenis = in_array($request->query('jenis'), ['lengkap', 'ringkas', 'nilai'], true) ? $request->query('jenis') : 'lengkap';
-        $book = ExportExcel::buat(new Rekap($kelas->load('mahasiswa', 'asisten', 'asisten2')), $jenis);
-        $nama = ($jenis === 'nilai' ? 'rekap-nilai-' : 'rekap-absen-').Str::slug($kelas->mata_kuliah.'-'.$kelas->nama_kelas).'.xlsx';
+        $book = ExportExcel::buat(new Rekap($kelas->load('mahasiswa', 'asisten', 'asisten2', 'matkul.dosen'), ringan: true));
+        $nama = 'rekap-'.Str::slug($kelas->mata_kuliah.'-'.$kelas->nama_kelas).'.xlsx';
 
         return response()->streamDownload(fn () => (new Xlsx($book))->save('php://output'), $nama,
             ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']);

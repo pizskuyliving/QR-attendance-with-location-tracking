@@ -9,12 +9,14 @@ use App\Http\Controllers\Asisten\SesiController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DaftarAsistenController;
 use App\Http\Controllers\Laboran\LaboranController;
+use App\Http\Controllers\LupaSandiController;
 use App\Http\Controllers\Dosen\KelasController as DosenKelasController;
 use App\Http\Controllers\Dosen\MatkulController as DosenMatkulController;
 use App\Http\Controllers\Mahasiswa\AbsenController;
 use App\Http\Controllers\Mahasiswa\KelasController as KelasMahasiswaController;
 use App\Http\Controllers\Mahasiswa\MatkulController;
 use App\Http\Controllers\Asisten\MateriController;
+use App\Http\Controllers\Asisten\PesanController;
 use App\Http\Controllers\Asisten\SoalUjianController;
 use App\Http\Controllers\Asisten\TugasController;
 use App\Http\Controllers\Asisten\UjianController;
@@ -25,9 +27,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [AuthController::class, 'formMahasiswa'])->name('login');
 Route::get('/masuk/cek', [AuthController::class, 'cekSesi'])->name('masuk.cek');
 Route::post('/masuk', [AuthController::class, 'masuk'])->middleware('throttle:masuk')->name('masuk');
-Route::post('/login', [AuthController::class, 'loginMahasiswa'])->middleware('throttle:masuk')->name('login.mahasiswa');
 Route::get('/asisten/login', [AuthController::class, 'formAsisten'])->name('asisten.login');
-Route::post('/asisten/login', [AuthController::class, 'loginAsisten'])->middleware('throttle:masuk');
 Route::get('/asisten/daftar', [DaftarAsistenController::class, 'form'])->name('asisten.daftar');
 Route::post('/asisten/daftar', [DaftarAsistenController::class, 'store'])->middleware('throttle:5,10');
 Route::get('/asisten/login/2fa', [AuthController::class, 'formDuaLangkah'])->name('asisten.login.2fa');
@@ -40,7 +40,11 @@ Route::get('/daftar/verifikasi', [RegisterController::class, 'formVerifikasi'])-
 Route::post('/daftar/verifikasi', [RegisterController::class, 'verifikasi'])->middleware('throttle:10,1');
 Route::post('/daftar/kirim-ulang', [RegisterController::class, 'kirimUlang'])->middleware('throttle:3,10')->name('daftar.ulang');
 
-Route::get('/lupa-sandi', [AuthController::class, 'lupa'])->name('lupa');
+Route::get('/lupa-sandi', [LupaSandiController::class, 'form'])->name('lupa');
+Route::post('/lupa-sandi', [LupaSandiController::class, 'kirim'])->middleware('throttle:masuk');
+Route::get('/lupa-sandi/kode', [LupaSandiController::class, 'formKode'])->name('lupa.kode');
+Route::post('/lupa-sandi/kode', [LupaSandiController::class, 'simpan'])->middleware('throttle:10,1');
+Route::post('/lupa-sandi/kirim-ulang', [LupaSandiController::class, 'kirimUlang'])->middleware('throttle:3,10')->name('lupa.ulang');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // ---------- Mahasiswa ----------
@@ -62,6 +66,7 @@ Route::middleware('auth:mahasiswa')->prefix('m')->name('mhs.')->group(function (
     Route::get('/tugas/{tugas}', [MatkulController::class, 'tugas'])->name('tugas');
     Route::post('/tugas/{tugas}', [MatkulController::class, 'kumpul'])->middleware('throttle:20,1')->name('tugas.kumpul');
     Route::get('/tugas/{tugas}/unduh', [MatkulController::class, 'unduhKiriman'])->name('tugas.unduh');
+    Route::get('/tugas/{tugas}/lampiran/{lampiran}', [MatkulController::class, 'unduhLampiran'])->name('tugas.lampiran');
     Route::post('/kelas/{kelas}', [KelasMahasiswaController::class, 'gabung'])->middleware('throttle:30,1')->name('kelas.gabung');
     Route::delete('/kelas/{kelas}', [KelasMahasiswaController::class, 'keluar'])->middleware('throttle:30,1')->name('kelas.keluar');
     Route::post('/akun/sandi', [AuthController::class, 'gantiPassword'])->middleware('throttle:5,1')->name('sandi');
@@ -111,6 +116,8 @@ Route::middleware(['auth:web', 'asisten.aktif'])->prefix('asisten')->name('asist
         Route::post('/tugas/{tugas}/kiriman/{pengumpulan}/nilai', [TugasController::class, 'nilai'])->name('tugas.nilai');
         Route::get('/tugas/{tugas}/kiriman/{pengumpulan}', [TugasController::class, 'unduh'])->name('tugas.unduh');
         Route::get('/tugas/{tugas}/zip', [TugasController::class, 'unduhSemua'])->name('tugas.zip');
+        Route::get('/tugas/{tugas}/lampiran/{lampiran}', [TugasController::class, 'unduhLampiran'])->name('tugas.lampiran');
+        Route::delete('/tugas/{tugas}/lampiran/{lampiran}', [TugasController::class, 'hapusLampiran'])->name('tugas.lampiran.hapus');
 
         Route::post('/kelas/{kelas}/sesi', [SesiController::class, 'buka'])->name('sesi.buka');
         Route::get('/sesi/{sesi}', [SesiController::class, 'show'])->name('sesi.show');
@@ -123,6 +130,13 @@ Route::middleware(['auth:web', 'asisten.aktif'])->prefix('asisten')->name('asist
     Route::get('/kelas/{kelas}/soal/{soal}', [SoalUjianController::class, 'unduh'])->name('soal.unduh');
 
     // mata kuliah & pantauan asisten: dosen & admin
+    // kotak pesan: catatan dosen untuk asisten
+    Route::middleware('peran:asisten')->group(function () {
+        Route::get('/pesan', [PesanController::class, 'index'])->name('pesan');
+        Route::post('/pesan/baca-semua', [PesanController::class, 'bacaSemua'])->name('pesan.baca-semua');
+        Route::post('/pesan/{catatan}/baca', [PesanController::class, 'baca'])->name('pesan.baca');
+    });
+
     Route::middleware('peran:admin,dosen')->group(function () {
         Route::get('/matkul', [DosenMatkulController::class, 'index'])->name('matkul.index');
         Route::post('/matkul', [DosenMatkulController::class, 'store'])->name('matkul.store');

@@ -24,6 +24,25 @@
             <?php if($tugas->deskripsi): ?>
                 <div class="card"><div class="eyebrow" style="margin-bottom:6px">Petunjuk</div><div style="white-space:pre-line"><?php echo e($tugas->deskripsi); ?></div></div>
             <?php endif; ?>
+            <?php if($tugas->lampiran->isNotEmpty()): ?>
+                <div class="card flat">
+                    <div style="padding:14px 16px 0"><b>Lampiran dari asisten</b> <span class="meta">(<?php echo e($tugas->lampiran->count()); ?>)</span></div>
+                    <?php $__currentLoopData = $tugas->lampiran; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $l): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php ([$jl, $jc] = $l->jenis()); ?>
+                        <?php if($l->adalahFile()): ?>
+                            <a class="item" href="<?php echo e(route('mhs.tugas.lampiran', [$tugas, $l])); ?>">
+                                <span class="ft <?php echo e($jc); ?>"><?php echo e($jl); ?></span>
+                                <span class="tx"><b><?php echo e($l->nama_file); ?></b><span class="meta">Unduh · <?php echo e(\App\Models\Materi::ukuranTeks($l->ukuran)); ?></span></span>
+                            </a>
+                        <?php else: ?>
+                            <a class="item" href="<?php echo e($l->url); ?>" target="_blank" rel="noopener noreferrer">
+                                <span class="ft <?php echo e($jc); ?>"><?php echo e($jl); ?></span>
+                                <span class="tx"><b style="overflow-wrap:anywhere"><?php echo e($l->url); ?></b><span class="meta">Buka tautan · <?php echo e(parse_url($l->url, PHP_URL_HOST)); ?></span></span>
+                            </a>
+                        <?php endif; ?>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                </div>
+            <?php endif; ?>
             <?php if($kiriman?->dinilai()): ?>
                 <div class="card">
                     <div class="row between" style="flex-wrap:nowrap">

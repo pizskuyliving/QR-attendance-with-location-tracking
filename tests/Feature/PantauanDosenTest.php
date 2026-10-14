@@ -122,7 +122,7 @@ class PantauanDosenTest extends TestCase
         $book = IOFactory::load($file);
         unlink($file);
 
-        $this->assertSame(['Ringkasan', 'Semua Mahasiswa', 'Absen Kelas A', 'Absen Kelas B'], $book->getSheetNames());
+        $this->assertSame(['Ringkasan', 'Semua Mahasiswa', 'Rekap Kelas A', 'Rekap Kelas B'], $book->getSheetNames());
         $this->assertSame('Asisten A', $book->getSheet(0)->getCell('B8')->getValue());
         $this->assertSame('Belum ada asisten', $book->getSheet(0)->getCell('B9')->getValue());
         $this->assertSame('50421001', $book->getSheet(1)->getCell('C2')->getValue());
@@ -130,13 +130,13 @@ class PantauanDosenTest extends TestCase
 
         // tiap lembar absen: tanda tangan dosen pengampu dan asisten dalam satu baris
         $sel = fn ($ws) => collect($ws->toArray(null, false, false, true))->flatMap(fn ($r, $i) => collect($r)->filter()->mapWithKeys(fn ($v, $c) => [$c.$i => $v]));
-        $a = $sel($book->getSheetByName('Absen Kelas A'));
+        $a = $sel($book->getSheetByName('Rekap Kelas A'));
         $baris = (int) substr($a->search('Dosen Pengampu,'), 1);
         $this->assertSame('C', substr($a->search('Dosen Pengampu,'), 0, 1));
         $this->assertSame($baris, (int) substr($a->search('Asisten,'), 1));
         $this->assertSame($baris + 4, (int) substr($a->search('Dr. Dosen'), 1));
         $this->assertSame($baris + 4, (int) substr($a->search('Asisten A'), 1));
-        $this->assertContains('(..............................)', $sel($book->getSheetByName('Absen Kelas B'))->all());
+        $this->assertContains('(..............................)', $sel($book->getSheetByName('Rekap Kelas B'))->all());
     }
 
     public function test_satu_kelas_maksimal_dua_asisten_dengan_akses_sama(): void
@@ -189,9 +189,35 @@ class PantauanDosenTest extends TestCase
         $this->actingAs($dosen)->post(route('asisten.matkul.catatan', [$matkul, $kelas]), ['isi' => 'Tolong unggah materi P3.'])->assertSessionHasNoErrors();
         Mail::assertSent(Pemberitahuan::class, fn ($m) => $m->hasTo('a@kampus.ac.id') && in_array('Tolong unggah materi P3.', $m->paragraf, true));
 
-        $this->actingAs($asisten)->get(route('asisten.dashboard'))->assertSee('1</b> catatan baru', false)->assertSee('Catatan baru');
-        $this->actingAs($asisten)->get(route('asisten.kelas.show', $kelas))->assertSee('Tolong unggah materi P3.')->assertSee('1 baru');
-        $this->assertNotNull($kelas->catatanDosen()->first()->dibaca_at);
+        // tidak menumpuk di dashboard/kelas: cukup badge, isinya di menu Pesan
+        $this->actingAs($asisten)->get(route('asisten.dashboard'))->assertSee('Pesan baru')->assertSee('menu-hitung', false)->assertDontSee('Tolong unggah materi P3.');
+        $this->actingAs($asisten)->get(route('asisten.kelas.show', $kelas))->assertSee('1</b> pesan baru', false)->assertDontSee('Tolong unggah materi P3.');
+        $this->assertNull($kelas->catatanDosen()->first()->dibaca_at);
+        $this->actingAs($asisten)->get(route('asisten.pesan', ['lihat' => 'baru']))->assertOk()->assertSee('Tolong unggah materi P3.')->assertSee('Tandai dibaca');
+        $catatan = $kelas->catatanDosen()->first();
+
+        // asisten lain dan dosen tidak bisa membuka/menandai pesan ini
+        $orang = User::create(['name' => 'Asisten Z', 'email' => 'z@kampus.ac.id', 'password' => 'rahasia123', 'role' => 'asisten']);
+        $this->actingAs($orang)->get(route('asisten.pesan'))->assertOk()->assertDontSee('Tolong unggah materi P3.');
+        $this->actingAs($orang)->post(route('asisten.pesan.baca', $catatan))->assertForbidden();
+        $this->actingAs($dosen)->get(route('asisten.pesan'))->assertRedirect();
+
+        $this->actingAs($asisten)->post(route('asisten.pesan.baca', $catatan))->assertRedirect();
+        $this->assertNotNull($catatan->fresh()->dibaca_at);
+        $this->actingAs($asisten)->get(route('asisten.pesan', ['lihat' => 'baru']))->assertSee('Tidak ada pesan baru.');
+        $this->actingAs($asisten)->get(route('asisten.dashboard'))->assertDontSee('menu-hitung', false);
         $this->actingAs($dosen)->get(route('asisten.matkul.index'))->assertSee('sudah dibaca');
+    }
+
+    public function test_radius_kosong_memakai_bawaan_dan_pesan_berbahasa_indonesia(): void
+    {
+        [, $asisten, $kelas] = $this->siapkan();
+        $this->actingAs($asisten)->put(route('asisten.kelas.update', $kelas), ['lokasi_lat' => '0.442314', 'lokasi_lng' => '101.451892', 'radius' => ''])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(100, (int) $kelas->fresh()->radius);
+        $this->assertTrue($kelas->fresh()->punyaRadius());
+
+        $this->put(route('asisten.kelas.update', $kelas), ['lokasi_lat' => '0.44', 'lokasi_lng' => '', 'radius' => '100'])
+            ->assertSessionHasErrors(['lokasi_lng' => 'Longitude wajib diisi bila latitude / radius diisi.']);
     }
 }

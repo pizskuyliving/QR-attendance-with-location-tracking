@@ -50,7 +50,11 @@ class KelasController extends Controller
         if ($kelas->jawabanUjian()->where('mahasiswa_id', $mhs->id)->exists()) {
             return back()->withErrors(['kelas' => 'Kamu sudah mengunggah jawaban ujian di '.$kelas->label().'. Hubungi asisten bila salah pilih.']);
         }
-        if ($mhs->kelas()->whereKey($kelas->id)->exists()) {
+        $pivot = $mhs->kelas()->whereKey($kelas->id)->first()?->pivot;
+        if ($pivot && ($pivot->nilai_uts !== null || $pivot->nilai_uas !== null)) {
+            return back()->withErrors(['kelas' => 'Kamu sudah punya nilai UTS/UAS di '.$kelas->label().'. Hubungi asisten bila salah pilih.']);
+        }
+        if ($pivot) {
             $mhs->kelas()->detach($kelas->id);
             LogAktivitas::catat($kelas, 'mhs_keluar', "{$mhs->npm} {$mhs->nama} keluar dari {$kelas->label()}", ['mahasiswa_id' => $mhs->id]);
         }

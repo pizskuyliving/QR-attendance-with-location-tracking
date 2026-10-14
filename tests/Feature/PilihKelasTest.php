@@ -107,6 +107,11 @@ class PilihKelasTest extends TestCase
         $this->delete(route('mhs.kelas.keluar', $bd))->assertSessionHasErrors('kelas');
         $this->assertTrue($mhs->kelas()->whereKey($bd->id)->exists());
 
+        // nilai UTS/UAS yang sudah diisi asisten juga mengunci (keluar akan menghapus nilainya)
+        $mhs->kelas()->updateExistingPivot($ulang->id, ['nilai_uts' => 80]);
+        $this->delete(route('mhs.kelas.keluar', $ulang))->assertSessionHasErrors('kelas');
+        $this->assertEquals(80, $mhs->kelas()->whereKey($ulang->id)->first()->pivot->nilai_uts);
+
         $this->actingAs($this->asisten, 'web')->get(route('asisten.kelas.show', [$bd, 'tab' => 'log', 'aksi' => 'mahasiswa']))
             ->assertSee('50421099 Budi (kelas B) bergabung ke Basis Data — Kelas B');
     }

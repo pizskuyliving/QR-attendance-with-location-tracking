@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Kelas;
-use App\Models\Mahasiswa;
 use App\Models\Matkul;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -15,7 +14,7 @@ class DatabaseSeeder extends Seeder
      *   Laboran : admin@kampus.ac.id   / admin123
      *   Asisten : asisten@kampus.ac.id / asisten123
      *   Dosen   : dosen@kampus.ac.id   / dosen123
-     *   Mahasiswa contoh: 50421001@contoh.ac.id s.d. 50421010@contoh.ac.id, kata sandi = NPM (kelas A, sudah ikut Basis Data)
+     * Akun mahasiswa tidak dibuat di sini: mahasiswa mendaftar sendiri lewat /daftar.
      */
     public function run(): void
     {
@@ -23,11 +22,11 @@ class DatabaseSeeder extends Seeder
         $asisten = User::updateOrCreate(['email' => 'asisten@kampus.ac.id'], ['name' => 'Asisten Demo', 'password' => 'asisten123', 'role' => 'asisten']);
         $dosen = User::updateOrCreate(['email' => 'dosen@kampus.ac.id'], ['name' => 'Dosen Demo', 'password' => 'dosen123', 'role' => 'dosen']);
 
-        if ($this->command->confirm('Buat kelas & mahasiswa contoh?', true)) {
+        if ($this->command->confirm('Buat matkul & kelas contoh?', true)) {
             // kelas dibuat dosen di dalam mata kuliahnya, lalu asisten dipilih per kelas
             $bd = Matkul::firstOrCreate(['dosen_id' => $dosen->id, 'nama' => 'Basis Data']);
             $web = Matkul::firstOrCreate(['dosen_id' => $dosen->id, 'nama' => 'Pemrograman Web']);
-            $kelas = Kelas::firstOrCreate(
+            Kelas::firstOrCreate(
                 ['matkul_id' => $bd->id, 'asisten_id' => $asisten->id, 'nama_kelas' => 'A', 'mata_kuliah' => 'Basis Data'],
                 ['hari' => 'Senin 08.00', 'ruang' => 'Lab 3', 'jumlah_pertemuan' => 8]
             );
@@ -36,14 +35,6 @@ class DatabaseSeeder extends Seeder
                 ['hari' => 'Rabu 10.00', 'ruang' => 'Lab 1', 'jumlah_pertemuan' => 8]);
             Kelas::firstOrCreate(['matkul_id' => $bd->id, 'asisten_id' => $asisten->id, 'nama_kelas' => 'B', 'mata_kuliah' => 'Basis Data'],
                 ['hari' => 'Selasa 08.00', 'ruang' => 'Lab 3', 'jumlah_pertemuan' => 8]);
-            $nama = ['Andi Saputra', 'Budi Santoso', 'Citra Lestari', 'Dewi Anggraini', 'Eko Prasetyo',
-                'Fitri Handayani', 'Gilang Ramadhan', 'Hana Pertiwi', 'Indra Wijaya', 'Joko Susilo'];
-            foreach ($nama as $i => $n) {
-                $npm = '504210'.str_pad($i + 1, 2, '0', STR_PAD_LEFT);
-                $m = Mahasiswa::firstOrCreate(['npm' => $npm], ['nama' => $n, 'password' => $npm, 'kelas' => 'A',
-                    'email' => $npm.'@contoh.ac.id', 'email_verified_at' => now()]);
-                $kelas->mahasiswa()->syncWithoutDetaching([$m->id]);
-            }
         }
     }
 }

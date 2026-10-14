@@ -45,7 +45,7 @@ class DuaLangkahTest extends TestCase
 
     private function loginSandi()
     {
-        return $this->post('/asisten/login', ['email' => 'asisten@kampus.ac.id', 'password' => 'asisten123', 'cf-turnstile-response' => 't']);
+        return $this->post('/masuk', ['peran' => 'asisten', 'email' => 'asisten@kampus.ac.id', 'password' => 'asisten123', 'cf-turnstile-response' => 't']);
     }
 
     public function test_kode_sesuai_vektor_rfc6238(): void

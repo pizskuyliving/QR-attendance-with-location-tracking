@@ -19,8 +19,11 @@ class Tugas extends Model
 
     protected static function booted(): void
     {
-        // hapus file kiriman mahasiswa ikut terhapus
-        static::deleting(fn (Tugas $t) => $t->pengumpulan()->get()->each->delete());
+        // file kiriman mahasiswa dan lampiran asisten ikut terhapus dari penyimpanan
+        static::deleting(function (Tugas $t) {
+            $t->pengumpulan()->get()->each->delete();
+            $t->lampiran()->get()->each->delete();
+        });
     }
 
     public function kelas(): BelongsTo
@@ -31,6 +34,11 @@ class Tugas extends Model
     public function pengumpulan(): HasMany
     {
         return $this->hasMany(Pengumpulan::class);
+    }
+
+    public function lampiran(): HasMany
+    {
+        return $this->hasMany(TugasLampiran::class)->orderBy('id');
     }
 
     public function lewatTenggat(): bool

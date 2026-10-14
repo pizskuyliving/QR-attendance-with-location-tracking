@@ -44,7 +44,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="FLEX">
-    <link rel="stylesheet" href="/css/app.css?v=37">
+    <link rel="stylesheet" href="/css/app.css?v=41">
     <?php echo $__env->yieldPushContent('head'); ?>
 </head>
 <body class="<?php echo $__env->yieldContent('body-class'); ?>">
@@ -55,7 +55,7 @@
         window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
     }
 </script>
-<script src="/js/ui.js?v=37"></script>
+<script src="/js/ui.js?v=41"></script>
 <?php echo $__env->yieldPushContent('scripts'); ?>
 </body>
 </html>

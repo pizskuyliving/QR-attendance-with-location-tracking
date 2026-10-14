@@ -53,7 +53,7 @@
             </tbody>
         </table>
     </div>
-    <p class="small muted">Nilai 0–100 langsung masuk kolom {{ $label }} di tab Nilai dan dihitung ke nilai akhir. Mahasiswa yang ujian tertulis (tanpa unggah) tetap bisa diberi nilai. Setelah dinilai, mahasiswa tidak bisa mengganti filenya.</p>
+    <p class="small muted">Nilai 0–100 langsung masuk kolom {{ $label }} di tab Rekap &amp; Nilai dan dihitung ke nilai akhir. Mahasiswa yang ujian tertulis (tanpa unggah) tetap bisa diberi nilai. Setelah dinilai, mahasiswa tidak bisa mengganti filenya.</p>
 @endsection
 @push('scripts')
 <script>

@@ -41,7 +41,7 @@ class AuthController extends Controller
         return back()->withErrors(['email' => $pesan])->onlyInput('email', 'peran');
     }
 
-    public function loginMahasiswa(Request $request)
+    private function loginMahasiswa(Request $request)
     {
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
         if ($galat = Captcha::periksa($request)) {
@@ -131,7 +131,7 @@ class AuthController extends Controller
         return view('auth.masuk', ['peran' => session('errors') ? 'asisten' : 'mahasiswa']);
     }
 
-    public function loginAsisten(Request $request)
+    private function loginAsisten(Request $request)
     {
         $data = $request->validate(['email' => 'required|email', 'password' => 'required|string']);
         if ($galat = Captcha::periksa($request)) {
@@ -223,11 +223,6 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
-    }
-
-    public function lupa()
-    {
-        return view('auth.lupa');
     }
 
     /** Ganti kata sandi untuk akun yang sedang login (mahasiswa atau asisten). */

@@ -16,11 +16,17 @@ class Rekap
 
     public array $perPertemuan = [];
 
-    public function __construct(public Kelas $kelas)
+    /**
+     * $ringan = true untuk ringkasan (dashboard, pantauan dosen, Excel, pengingat): sel berisi baris mentah
+     * (hanya status) tanpa membuat model Eloquent, jauh lebih hemat saat kelasnya banyak.
+     */
+    public function __construct(public Kelas $kelas, bool $ringan = false)
     {
         $n = $kelas->jumlah_pertemuan;
-        $absen = Absensi::where('kelas_id', $kelas->id)->get()
-            ->groupBy('mahasiswa_id');
+        $absen = ($ringan
+            ? Absensi::where('kelas_id', $kelas->id)->toBase()->get(['mahasiswa_id', 'pertemuan', 'status'])
+            : Absensi::where('kelas_id', $kelas->id)->get()
+        )->groupBy('mahasiswa_id');
 
         for ($p = 1; $p <= $n; $p++) {
             $this->perPertemuan[$p] = ['H' => 0, 'I' => 0, 'S' => 0, 'A' => 0, 'kosong' => 0];

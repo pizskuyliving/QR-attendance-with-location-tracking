@@ -36,6 +36,8 @@ return [
     ],
     'regex' => 'Format :attribute tidak valid.',
     'required' => ':Attribute wajib diisi.',
+    'required_with' => ':Attribute wajib diisi bila :values diisi.',
+    'required_without' => ':Attribute wajib diisi bila :values kosong.',
     'string' => ':Attribute harus berupa teks.',
     'unique' => ':Attribute sudah digunakan.',
 
@@ -53,5 +55,8 @@ return [
         'jumlah_pertemuan' => 'jumlah pertemuan',
         'pertemuan' => 'pertemuan',
         'file' => 'file',
+        'lokasi_lat' => 'latitude',
+        'lokasi_lng' => 'longitude',
+        'radius' => 'radius',
     ],
 ];

@@ -29,7 +29,7 @@ class DaftarAsistenTest extends TestCase
 
     private function login()
     {
-        return $this->from('/asisten/login')->post('/asisten/login', ['email' => 'rina@gmail.com', 'password' => 'rahasia123', 'cf-turnstile-response' => 't']);
+        return $this->from('/asisten/login')->post('/masuk', ['peran' => 'asisten', 'email' => 'rina@gmail.com', 'password' => 'rahasia123', 'cf-turnstile-response' => 't']);
     }
 
     public function test_daftar_lalu_menunggu_persetujuan(): void

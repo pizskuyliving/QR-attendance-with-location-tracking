@@ -20,7 +20,7 @@
 @if ($mode === 'dosen')
 <div class="field"><label>Bobot nilai akhir</label>
     @include('asisten._bobot', ['k' => $k])
-    <div class="small muted" style="margin-top:4px">Nilai UTS dan UAS diisi asisten di tab Nilai. Asisten juga bisa mengubah bobot ini.</div>
+    <div class="small muted" style="margin-top:4px">Nilai UTS dan UAS diisi asisten di tab Rekap &amp; Nilai. Asisten juga bisa mengubah bobot ini.</div>
 </div>
 @endif
 @endif
@@ -31,7 +31,7 @@
         <div class="grid cols-2" style="gap:0 12px">
             <div class="field"><label>Latitude</label><input name="lokasi_lat" id="geoLat" inputmode="decimal" value="{{ old('lokasi_lat', $k->lokasi_lat !== null ? (float) $k->lokasi_lat : '') }}" placeholder="-6.3536"></div>
             <div class="field"><label>Longitude</label><input name="lokasi_lng" id="geoLng" inputmode="decimal" value="{{ old('lokasi_lng', $k->lokasi_lng !== null ? (float) $k->lokasi_lng : '') }}" placeholder="106.8418"></div>
-            <div class="field"><label>Radius (meter)</label><input type="number" name="radius" id="geoRadius" min="20" max="5000" value="{{ old('radius', $k->radius) }}" placeholder="100"></div>
+            <div class="field"><label>Radius (meter)</label><input type="number" name="radius" id="geoRadius" min="20" max="5000" value="{{ old('radius', $k->radius) }}" placeholder="{{ \App\Http\Controllers\Asisten\KelasController::RADIUS_BAWAAN }}"><div class="small muted">Kosong = {{ \App\Http\Controllers\Asisten\KelasController::RADIUS_BAWAAN }} m</div></div>
             <div class="field" style="align-self:end"><div class="row" style="gap:8px">
                 <button type="button" class="btn ghost sm" id="geoAmbil">{!! \App\Support\Ikon::svg('pin') !!} Pakai lokasi saya</button>
                 <button type="button" class="btn ghost sm" onclick="['geoLat','geoLng','geoRadius'].forEach(i => document.getElementById(i).value = '')">Matikan</button>
@@ -47,7 +47,7 @@
                     document.getElementById('geoLat').value = p.coords.latitude.toFixed(7);
                     document.getElementById('geoLng').value = p.coords.longitude.toFixed(7);
                     const r = document.getElementById('geoRadius');
-                    if (!r.value) r.value = 100;
+                    if (!r.value) r.value = @js(\App\Http\Controllers\Asisten\KelasController::RADIUS_BAWAAN);
                     info.textContent = `Lokasi terbaca (akurasi ±${Math.round(p.coords.accuracy)} m). Tekan Simpan.`;
                 }, e => info.textContent = e.code === 1 ? 'Akses lokasi ditolak browser.' : 'Lokasi tidak terbaca, coba lagi di dekat jendela.',
                 { enableHighAccuracy: true, timeout: 15000 });

@@ -47,7 +47,10 @@ class ProfilController extends Controller
     {
         abort_unless($request->user()->role === 'admin', 403);
         $data = $request->validate(['password' => ['required', Password::defaults()]]);
-        $user->update($data);
+        $user->password = $data['password'];
+        $user->setRememberToken(\Illuminate\Support\Str::random(60)); // "ingat saya" di perangkat lain tidak berlaku lagi
+        $user->save();
+        LogAktivitas::catat(null, 'reset_sandi_akun', "{$request->user()->name} mengganti kata sandi akun {$user->name} ({$user->email})");
 
         return back()->with('ok', "Kata sandi {$user->name} diganti.");
     }

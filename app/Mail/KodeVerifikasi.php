@@ -11,11 +11,12 @@ class KodeVerifikasi extends Mailable
 {
     use Queueable;
 
-    public function __construct(public string $nama, public string $kode, public int $menit) {}
+    /** @param 'daftar'|'sandi' $tujuan pendaftaran akun baru, atau atur ulang kata sandi */
+    public function __construct(public string $nama, public string $kode, public int $menit, public string $tujuan = 'daftar') {}
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: 'Kode verifikasi FLEX: '.$this->kode);
+        return new Envelope(subject: ($this->tujuan === 'sandi' ? 'Kode atur ulang kata sandi FLEX: ' : 'Kode verifikasi FLEX: ').$this->kode);
     }
 
     public function content(): Content

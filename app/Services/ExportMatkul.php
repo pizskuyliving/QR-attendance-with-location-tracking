@@ -14,7 +14,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
  * Rekap gabungan satu mata kuliah untuk dosen: ringkasan per kelas & kinerja asisten,
- * daftar semua mahasiswa lintas kelas, lalu satu lembar rekap absen per kelas.
+ * daftar semua mahasiswa lintas kelas, lalu satu lembar rekap absen & nilai per kelas.
  */
 class ExportMatkul
 {
@@ -23,7 +23,8 @@ class ExportMatkul
     public static function buat(Matkul $matkul): Spreadsheet
     {
         $matkul->loadMissing('dosen', 'kelas.asisten', 'kelas.mahasiswa');
-        $pantau = $matkul->kelas->map(fn ($k) => Pantauan::untuk($k));
+        // Excel butuh grid lengkap per mahasiswa: Rekap ringan ditambahkan ke ringkasan Pantauan
+        $pantau = $matkul->kelas->map(fn ($k) => Pantauan::untuk($k) + ['rekap' => new Rekap($k, ringan: true)]);
 
         $book = new Spreadsheet;
         $book->getProperties()->setTitle('Rekap '.$matkul->label())->setCreator('FLEX — Flexible Learning Experience');
@@ -32,11 +33,11 @@ class ExportMatkul
         $dipakai = [];
         foreach ($pantau as $p) {
             // nama lembar harus unik; dua asisten bisa sama-sama memegang "Kelas A"
-            $judul = 'Absen Kelas '.$p['kelas']->nama_kelas;
+            $judul = 'Rekap Kelas '.$p['kelas']->nama_kelas;
             $dipakai[$judul] = ($dipakai[$judul] ?? 0) + 1;
             $ws = $book->createSheet();
+            ExportExcel::lembarRekap($ws, $p['rekap']);
             $ws->setTitle(mb_substr($judul.($dipakai[$judul] > 1 ? " ({$dipakai[$judul]})" : ''), 0, 31));
-            ExportExcel::lembarRekap($ws, $p['rekap'], 'lengkap');
         }
         $book->setActiveSheetIndex(0);
 

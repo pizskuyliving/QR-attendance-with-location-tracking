@@ -71,9 +71,9 @@ class UjianTest extends TestCase
         // UTS kosong dilewati: (20 × 0 + 50 × 60) / 70
         $this->assertEquals(round(3000 / 70, 1), $baris['1002']['akhir']);
 
-        $this->get(route('asisten.kelas.show', [$this->kelas, 'tab' => 'nilai']))->assertOk()->assertSee('Simpan nilai UTS/UAS')->assertDontSee('Periksa jawaban');
+        $this->get(route('asisten.kelas.show', [$this->kelas, 'tab' => 'rekap']))->assertOk()->assertSee('Simpan nilai UTS/UAS')->assertDontSee('Periksa jawaban');
         $this->get(route('asisten.kelas.show', [$this->kelas, 'tab' => 'ujian']))->assertOk()->assertSee('Periksa jawaban (0)')->assertSee('Unggah soal');
-        $this->get(route('asisten.absensi.export', [$this->kelas, 'jenis' => 'nilai']))->assertOk();
+        $this->get(route('asisten.absensi.export', $this->kelas))->assertOk();
     }
 
     public function test_asisten_unggah_soal_dan_hak_aksesnya(): void

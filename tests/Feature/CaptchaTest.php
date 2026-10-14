@@ -26,7 +26,7 @@ class CaptchaTest extends TestCase
 
     private function login(array $tambahan = [])
     {
-        return $this->from('/')->post('/login', ['email' => 'andi@contoh.ac.id', 'password' => 'rahasia123'] + $tambahan);
+        return $this->from('/')->post('/masuk', ['peran' => 'mahasiswa', 'email' => 'andi@contoh.ac.id', 'password' => 'rahasia123'] + $tambahan);
     }
 
     public function test_halaman_login_hanya_menampilkan_turnstile(): void
@@ -108,10 +108,10 @@ class CaptchaTest extends TestCase
         User::create(['name' => 'Asisten', 'email' => 'asisten@kampus.ac.id', 'password' => 'asisten123', 'role' => 'asisten']);
         Http::fake(['challenges.cloudflare.com/*' => Http::sequence()->push(['success' => false])->push(['success' => true])]);
 
-        $data = ['email' => 'asisten@kampus.ac.id', 'password' => 'asisten123', 'cf-turnstile-response' => 't'];
-        $this->from('/asisten/login')->post('/asisten/login', $data)->assertSessionHasErrors('captcha');
+        $data = ['peran' => 'asisten', 'email' => 'asisten@kampus.ac.id', 'password' => 'asisten123', 'cf-turnstile-response' => 't'];
+        $this->from('/asisten/login')->post('/masuk', $data)->assertSessionHasErrors('captcha');
         $this->assertGuest();
-        $this->from('/asisten/login')->post('/asisten/login', $data)->assertRedirect(route('masuk.cek', ['ke' => '/asisten']));
+        $this->from('/asisten/login')->post('/masuk', $data)->assertRedirect(route('masuk.cek', ['ke' => '/asisten']));
         $this->assertAuthenticated();
     }
 

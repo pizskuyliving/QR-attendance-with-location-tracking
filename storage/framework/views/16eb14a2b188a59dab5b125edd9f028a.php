@@ -10,9 +10,6 @@
     <?php if(auth()->user()->role === 'admin' && ($jumlahMenunggu = \App\Models\User::where('status', 'menunggu')->count())): ?>
         <div class="alert info"><?php echo \App\Support\Ikon::svg('user-plus'); ?> Ada <b><?php echo e($jumlahMenunggu); ?></b> pendaftaran asisten menunggu persetujuan. <a href="<?php echo e(route('asisten.laboran.akun')); ?>#persetujuan">Tinjau sekarang</a></div>
     <?php endif; ?>
-    <?php if($catatanBaru = $kelas->sum(fn ($k) => $k['kelas']->diajarOleh(auth()->user()) ? $k['kelas']->catatan_baru_count : 0)): ?>
-        <div class="alert info"><?php echo \App\Support\Ikon::svg('alert'); ?> Ada <b><?php echo e($catatanBaru); ?></b> catatan baru dari dosen. Buka kelas yang bertanda <b>Catatan baru</b>.</div>
-    <?php endif; ?>
     <?php if (! (auth()->user()->pakaiDuaLangkah())): ?>
         <div class="alert info"><?php echo \App\Support\Ikon::svg('lock'); ?> Akunmu belum memakai verifikasi dua langkah. <a href="<?php echo e(route('asisten.profil')); ?>#dua-langkah">Aktifkan 2FA</a> agar dashboard tetap aman walaupun kata sandi bocor.</div>
     <?php endif; ?>
@@ -23,7 +20,7 @@
                 <div class="row between">
                     <span class="badge grey">Kelas <?php echo e($k['kelas']->nama_kelas); ?></span>
                     <span class="row" style="gap:6px">
-                        <?php if($k['kelas']->catatan_baru_count && $k['kelas']->diajarOleh(auth()->user())): ?><span class="badge I">Catatan baru</span><?php endif; ?>
+                        <?php if($k['kelas']->catatan_baru_count && $k['kelas']->diajarOleh(auth()->user())): ?><span class="badge I">Pesan baru</span><?php endif; ?>
                         <?php if($k['sesiAktif']): ?><span class="badge live">QR aktif · P<?php echo e($k['sesiAktif']->pertemuan); ?></span><?php endif; ?>
                     </span>
                 </div>

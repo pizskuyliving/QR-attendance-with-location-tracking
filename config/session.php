@@ -169,7 +169,8 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // bawaan: ikut https (APP_URL https:// atau FORCE_HTTPS=true), agar cookie sesi tidak pernah terkirim lewat http
+    'secure' => env('SESSION_SECURE_COOKIE', str_starts_with((string) env('APP_URL'), 'https://') || (bool) env('FORCE_HTTPS', false)),
 
     /*
     |--------------------------------------------------------------------------

@@ -15,7 +15,7 @@
             @csrf
             <div class="field">
                 <label for="peran">Masuk sebagai</label>
-                <select id="peran" name="peran" data-peran-pilih>
+                <select id="peran" name="peran" data-peran-pilih required>
                     @foreach (['mahasiswa' => 'Mahasiswa', 'asisten' => 'Asisten dosen', 'dosen' => 'Dosen', 'admin' => 'Laboran'] as $nilai => $label)
                         <option value="{{ $nilai }}" @selected($peran === $nilai)>{{ $label }}</option>
                     @endforeach
@@ -36,7 +36,7 @@
         <p class="center" style="margin-top:14px" data-peran="mahasiswa" @if ($peran !== 'mahasiswa') hidden @endif>@if (config('absen.daftar_mahasiswa'))Belum punya akun? <a href="{{ route('daftar') }}"><b>Daftar di sini</b></a>@else<span class="small muted">Pendaftaran akun mahasiswa sedang ditutup laboran.</span>@endif</p>
         <p class="center" style="margin-top:14px" data-peran="asisten" @if ($peran !== 'asisten') hidden @endif>@if (config('absen.daftar_asisten'))Belum punya akun? <a href="{{ route('asisten.daftar') }}"><b>Daftar akun asisten</b></a>@else<span class="small muted">Pendaftaran akun asisten sedang ditutup laboran.</span>@endif</p>
         <p class="center small muted" style="margin-top:14px" data-peran="dosen admin" @if (! in_array($peran, ['dosen', 'admin'], true)) hidden @endif>Akun dosen dan laboran dibuat oleh laboran.</p>
-        <p class="center small"><a href="{{ route('lupa') }}">Lupa kata sandi?</a></p>
+        <p class="center small"><a href="{{ route('lupa', ['peran' => $peran]) }}" data-lupa>Lupa kata sandi?</a></p>
     </div>
     @include('layouts.footer', ['ringkas' => true])
 </div>
@@ -45,6 +45,8 @@
 <script>
 document.querySelector('[data-peran-pilih]').addEventListener('change', e => {
     document.querySelectorAll('[data-peran]').forEach(el => el.hidden = !el.dataset.peran.split(' ').includes(e.target.value));
+    const lupa = document.querySelector('[data-lupa]');
+    lupa.href = lupa.href.replace(/peran=[a-z]+/, 'peran=' + e.target.value);
 });
 </script>
 @endpush

@@ -7,30 +7,84 @@ use App\Models\Kelas;
 use App\Models\LogAktivitas;
 use App\Models\Pengumpulan;
 use App\Models\Tugas;
+use App\Models\TugasLampiran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class TugasController extends Controller
 {
-    private function validasi(Request $request, Kelas $kelas): array
+    /** Batas lampiran per tugas (file + tautan), dan per sekali simpan. */
+    public const MAKS_LAMPIRAN = 20;
+
+    private const MAKS_SEKALI = 10;
+
+    /** Isi tugas + lampiran baru: [data tugas, tautan[]]. File lampiran diambil dari $request->file('lampiran'). */
+    private function validasi(Request $request, Kelas $kelas, ?Tugas $tugas = null): array
     {
-        $data = $request->validate([
+        $ekstensi = config('absen.ekstensi_materi');
+        // tautan diketik satu per baris; baris kosong & dobel diabaikan
+        $tautan = collect(preg_split('/\R/', (string) $request->input('tautan')))->map(fn ($b) => trim($b))->filter()->unique()->values()->all();
+        $data = Validator::make($request->all() + ['daftar_tautan' => $tautan], [
             'pertemuan' => 'required|integer|min:1|max:'.$kelas->jumlah_pertemuan,
             'judul' => 'required|string|max:150',
             'deskripsi' => 'nullable|string|max:5000',
             'tenggat' => 'required|date',
-        ], [], ['tenggat' => 'tenggat']);
-        $data['terima_terlambat'] = $request->boolean('terima_terlambat');
+            'lampiran' => 'nullable|array|max:'.self::MAKS_SEKALI,
+            'lampiran.*' => ['file', 'max:'.config('absen.maks_unggah_kb'), 'extensions:'.implode(',', $ekstensi)],
+            'daftar_tautan' => 'array|max:'.self::MAKS_SEKALI,
+            'daftar_tautan.*' => 'url:http,https|max:500',
+        ], [
+            'lampiran.max' => 'Maksimal '.self::MAKS_SEKALI.' file sekali unggah.',
+            'lampiran.*.extensions' => 'Jenis file :attribute tidak didukung. Gunakan: '.implode(', ', $ekstensi).'.',
+            'lampiran.*.max' => 'File :attribute melebihi batas ukuran.',
+            'lampiran.*.uploaded' => 'File :attribute gagal diunggah (mungkin terlalu besar).',
+            'daftar_tautan.max' => 'Maksimal '.self::MAKS_SEKALI.' tautan sekali simpan.',
+            'daftar_tautan.*.url' => 'Tautan baris ke-:position bukan alamat web yang valid (harus diawali http:// atau https://).',
+            'daftar_tautan.*.max' => 'Tautan baris ke-:position terlalu panjang.',
+        ], ['tenggat' => 'tenggat', 'lampiran.*' => 'ke-:position'])->validate();
 
-        return $data;
+        $baru = count($request->file('lampiran', [])) + count($tautan);
+        $ada = $tugas ? $tugas->lampiran()->count() : 0;
+        if ($ada + $baru > self::MAKS_LAMPIRAN) {
+            throw ValidationException::withMessages(['lampiran' => 'Satu tugas maksimal '.self::MAKS_LAMPIRAN.' lampiran. Sekarang sudah ada '.$ada.'; hapus yang tidak perlu dulu.']);
+        }
+
+        $isi = collect($data)->only(['pertemuan', 'judul', 'deskripsi', 'tenggat'])->all();
+        $isi['deskripsi'] ??= null;
+        $isi['terima_terlambat'] = $request->boolean('terima_terlambat');
+
+        return [$isi, $tautan];
+    }
+
+    /** Simpan file & tautan lampiran; kembalikan jumlahnya. */
+    private function simpanLampiran(Request $request, Tugas $tugas, array $tautan): int
+    {
+        foreach ($request->file('lampiran', []) as $f) {
+            $tugas->lampiran()->create([
+                // tanpa ekstensi agar file tidak pernah bisa dieksekusi; nama asli disimpan di nama_file
+                'path' => $f->storeAs("tugas/{$tugas->kelas_id}/lampiran", (string) Str::uuid()),
+                'nama_file' => $f->getClientOriginalName(),
+                'ukuran' => $f->getSize(),
+                'judul' => Str::limit(pathinfo($f->getClientOriginalName(), PATHINFO_FILENAME), 150),
+            ]);
+        }
+        foreach ($tautan as $url) {
+            $tugas->lampiran()->create(['url' => $url, 'judul' => $url]);
+        }
+
+        return count($request->file('lampiran', [])) + count($tautan);
     }
 
     public function store(Request $request, Kelas $kelas)
     {
         KelasController::pastikanMilik($request, $kelas);
-        $t = $kelas->tugas()->create($this->validasi($request, $kelas));
-        LogAktivitas::catat($kelas, 'tugas_tambah', "Membuat tugas P{$t->pertemuan}: {$t->judul} (tenggat {$t->tenggat->format('d/m/Y H:i')})", ['tugas_id' => $t->id]);
+        [$isi, $tautan] = $this->validasi($request, $kelas);
+        $t = $kelas->tugas()->create($isi);
+        $n = $this->simpanLampiran($request, $t, $tautan);
+        LogAktivitas::catat($kelas, 'tugas_tambah', "Membuat tugas P{$t->pertemuan}: {$t->judul} (tenggat {$t->tenggat->format('d/m/Y H:i')})".($n ? " dengan {$n} lampiran" : ''), ['tugas_id' => $t->id]);
 
         return redirect()->route('asisten.tugas.show', $t)->with('ok', 'Tugas dibuat. Mahasiswa kelas ini sudah bisa melihat dan mengumpulkan.');
     }
@@ -48,10 +102,38 @@ class TugasController extends Controller
     public function update(Request $request, Tugas $tugas)
     {
         KelasController::pastikanMilik($request, $tugas->kelas);
-        $tugas->update($this->validasi($request, $tugas->kelas));
-        LogAktivitas::catat($tugas->kelas, 'tugas_ubah', "Mengubah tugas P{$tugas->pertemuan}: {$tugas->judul} (tenggat {$tugas->tenggat->format('d/m/Y H:i')})", ['tugas_id' => $tugas->id]);
+        [$isi, $tautan] = $this->validasi($request, $tugas->kelas, $tugas);
+        $tugas->update($isi);
+        $n = $this->simpanLampiran($request, $tugas, $tautan);
+        LogAktivitas::catat($tugas->kelas, 'tugas_ubah', "Mengubah tugas P{$tugas->pertemuan}: {$tugas->judul} (tenggat {$tugas->tenggat->format('d/m/Y H:i')})".($n ? ", menambah {$n} lampiran" : ''), ['tugas_id' => $tugas->id]);
 
-        return back()->with('ok', 'Tugas diperbarui.');
+        return back()->with('ok', $n ? "Tugas diperbarui, {$n} lampiran ditambahkan." : 'Tugas diperbarui.');
+    }
+
+    public function hapusLampiran(Request $request, Tugas $tugas, TugasLampiran $lampiran)
+    {
+        KelasController::pastikanMilik($request, $tugas->kelas);
+        abort_unless($lampiran->tugas_id === $tugas->id, 404);
+        LogAktivitas::catat($tugas->kelas, 'tugas_lampiran_hapus', "Menghapus lampiran \"{$lampiran->judul}\" dari tugas {$tugas->judul}", ['tugas_id' => $tugas->id]);
+        $lampiran->delete();
+
+        return back()->with('ok', 'Lampiran dihapus.');
+    }
+
+    public function unduhLampiran(Request $request, Tugas $tugas, TugasLampiran $lampiran)
+    {
+        KelasController::pastikanMilik($request, $tugas->kelas);
+        abort_unless($lampiran->tugas_id === $tugas->id, 404);
+
+        return self::kirimLampiran($lampiran);
+    }
+
+    /** Dipakai asisten & mahasiswa (hak akses dicek di pemanggil). */
+    public static function kirimLampiran(TugasLampiran $lampiran)
+    {
+        abort_unless($lampiran->adalahFile() && Storage::exists($lampiran->path), 404);
+
+        return Storage::download($lampiran->path, $lampiran->nama_file);
     }
 
     public function destroy(Request $request, Tugas $tugas)

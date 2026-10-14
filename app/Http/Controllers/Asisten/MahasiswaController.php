@@ -100,7 +100,10 @@ class MahasiswaController extends Controller
         try {
             $import->jalankan($request->file('file')->getRealPath());
         } catch (\Throwable $e) {
-            return back()->withErrors(['file' => 'Gagal membaca file: '.$e->getMessage()]);
+            // pesan teknis (bisa memuat detail database) hanya masuk log, bukan ke layar
+            report($e);
+
+            return back()->withErrors(['file' => 'Gagal membaca file. Pastikan formatnya sesuai template (kolom NPM dan Nama), lalu coba lagi.']);
         }
 
         LogAktivitas::catat($kelas, 'import', "Import Excel {$request->file('file')->getClientOriginalName()}: {$import->baru} baru, {$import->diperbarui} diperbarui, {$import->absenDiimpor} absen",

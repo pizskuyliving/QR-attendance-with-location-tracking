@@ -335,6 +335,18 @@ a.item:hover{background:var(--tint)}
 .foot-mini{color:var(--tertiary)}
 .auth{background:var(--auth-bg)}
 .auth .card{box-shadow:var(--glow-nebula-lg);border-color:var(--tint-3)}
+/* latar halaman masuk/daftar: pola QR samar yang berganti pelan + garis pindai (public/img/pola-qr*.svg dipakai sebagai mask) */
+:root{--pola-qr:rgba(167,139,250,.22);--pola-pindai:rgba(253,224,71,.45)}
+@media (prefers-color-scheme: light){:root:not([data-theme=dark]){--pola-qr:rgba(124,58,237,.18);--pola-pindai:rgba(234,179,8,.55)}}
+:root[data-theme=light]{--pola-qr:rgba(124,58,237,.18);--pola-pindai:rgba(234,179,8,.55)}
+.auth{position:relative;isolation:isolate;overflow:hidden;--pola-pudar:radial-gradient(ellipse 46% 52% at 50% 50%,transparent 45%,#000 100%)}
+.auth::before,.auth::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none}
+.auth::before{background:var(--pola-qr);-webkit-mask-image:url(/img/pola-qr.svg),var(--pola-pudar);mask-image:url(/img/pola-qr.svg),var(--pola-pudar);-webkit-mask-size:384px 384px,100% 100%;mask-size:384px 384px,100% 100%;-webkit-mask-composite:source-in;mask-composite:intersect;animation:pola-a 9s ease-in-out infinite alternate}
+.auth::after{background:linear-gradient(transparent,var(--pola-pindai),transparent) no-repeat 0 -260px/100% 260px,linear-gradient(var(--pola-qr),var(--pola-qr));-webkit-mask-image:url(/img/pola-qr-2.svg),var(--pola-pudar);mask-image:url(/img/pola-qr-2.svg),var(--pola-pudar);-webkit-mask-size:384px 384px,100% 100%;mask-size:384px 384px,100% 100%;-webkit-mask-position:96px 160px,0 0;mask-position:96px 160px,0 0;-webkit-mask-composite:source-in;mask-composite:intersect;animation:pola-b 9s ease-in-out infinite alternate,pola-pindai 7s linear infinite}
+@keyframes pola-a{from{opacity:1}to{opacity:.2}}
+@keyframes pola-b{from{opacity:.2}to{opacity:1}}
+@keyframes pola-pindai{from{background-position:0 -260px,0 0}to{background-position:0 calc(100% + 260px),0 0}}
+@media(prefers-reduced-motion:reduce){.auth::before,.auth::after{animation:none}}
 dialog{background:var(--card);color:var(--text);border:1px solid var(--line);box-shadow:var(--glow-nebula-lg)}
 dialog::backdrop{background:var(--backdrop)}
 details summary::marker{color:var(--nebula)}
@@ -449,6 +461,8 @@ h2{font-size:1.15rem}
 label{font-size:.8rem;margin-bottom:5px}
 input:not([type=checkbox]):not([type=radio]),select,textarea{padding:9px 14px;border-width:1.5px}
 .field{margin-bottom:14px}
+/* isian wajib: tanda * otomatis pada label utama bila isiannya ber-atribut required */
+.field:has(:is(input,select,textarea)[required])>label:first-child::after{content:" *";color:var(--bad);font-weight:700}
 .btn{min-height:42px;padding:9px 22px}
 .btn.big{min-height:48px;padding:12px 24px;font-size:1rem}
 .btn.sm{min-height:34px;padding:6px 14px}
@@ -470,6 +484,8 @@ input:not([type=checkbox]):not([type=radio]),select,textarea{padding:9px 14px;bo
 .auth .foot-mini{padding-top:20px;font-size:.72rem}
 @media(max-width:599px){
   .auth{justify-content:flex-start}
+  /* di HP form tanpa kartu: pola hanya di bagian atas & bawah agar isian tetap terbaca */
+  .auth{--pola-pudar:linear-gradient(#000,transparent 150px,transparent calc(100% - 90px),#000)}
   .auth .card{background:transparent;border:0;box-shadow:none;padding:0;border-radius:0;max-width:400px}
   .auth .foot-mini{margin-top:auto}
 }
@@ -540,13 +556,6 @@ li .jatah{font-size:.8rem;font-weight:600;white-space:nowrap}
 .catatan-kirim summary{cursor:pointer;color:var(--nebula-ink);font-weight:600}
 .catatan-kirim summary .muted{font-weight:400}
 .catatan-kirim form{margin-top:8px}
-.catatan-dosen{padding:14px 16px;border:1px solid var(--warn-soft)}
-.catatan-dosen summary{display:flex;align-items:center;gap:8px;cursor:pointer}
-.catatan-dosen summary svg{width:18px;height:18px;color:var(--warn)}
-.catatan-dosen ul{list-style:none;margin:10px 0 0;padding:0}
-.catatan-dosen li{padding:10px 0;border-top:1px solid var(--line)}
-.catatan-dosen li.baru .isi{font-weight:600}
-.catatan-dosen .isi{white-space:pre-line;overflow-wrap:anywhere;margin-top:2px}
 /* panah dropdown (aturan select di atas tertimpa padding input) */
 select:not(.cell){padding-right:36px!important}
 select.cell{background-image:none}
@@ -627,3 +636,19 @@ select.pilih-auto{width:auto;min-width:170px;max-width:100%}
 input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value,input[type=datetime-local]::-webkit-date-and-time-value{text-align:left;min-height:1.4em}
 /* HP layar sentuh: teks isian min. 16px agar Safari iOS tidak memperbesar halaman saat kolom diketuk */
 @media (hover:none) and (pointer:coarse){input:not([type=file]):not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px}}
+/* kotak pesan catatan dosen */
+.menu-atas{white-space:nowrap;position:relative}
+/* di menu atas angka menempel di pojok kanan atas tulisan, sama seperti di ikon menu bawah HP */
+.menu-atas .menu-hitung{position:absolute;top:-7px;right:-7px;margin:0}
+.menu-atas:has(.menu-hitung){margin-right:6px}
+/* penghitung pesan baru: kotak kecil bersudut tipis, merah dengan cincin cahaya agar menonjol tanpa ramai */
+.menu-hitung{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;margin-left:6px;border-radius:4px;background:var(--bad);color:var(--on-danger);font-size:.72rem;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;vertical-align:middle;box-shadow:0 0 0 2px var(--bad-soft),var(--glow-red)}
+.ikon-hitung{position:relative;display:inline-flex}
+.ikon-hitung .menu-hitung{position:absolute;top:-4px;right:-10px;margin:0}
+.pesan-daftar{padding:0 16px}
+.pesan{padding:14px 0;border-top:1px solid var(--line)}
+.pesan:first-child{border-top:0}
+.pesan .isi{white-space:pre-line;overflow-wrap:anywhere;margin-top:4px}
+.pesan.baru .isi{font-weight:600}
+.titik-baru{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:middle}
+@media (max-width:700px){.menu-hitung{margin-left:3px;min-width:16px;height:16px;padding:0 3px;border-radius:3px}}

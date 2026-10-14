@@ -6,6 +6,8 @@ use App\Models\Absensi;
 use App\Models\Kelas;
 use App\Models\LogAktivitas;
 use App\Models\Pengumpulan;
+use App\Support\Kehadiran;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Ringkasan satu kelas untuk dosen/admin: kemajuan pertemuan, kehadiran, dan kinerja asisten
@@ -20,9 +22,8 @@ class Pantauan
 
     public static function untuk(Kelas $kelas): array
     {
-        $rekap = new Rekap($kelas);
         $n = (int) $kelas->jumlah_pertemuan;
-        $terlaksanaP = array_keys(array_filter($rekap->perPertemuan, fn ($r) => $r['H'] + $r['I'] + $r['S'] + $r['A'] > 0));
+        ['pertemuan' => $terlaksanaP, 'mahasiswa' => $jumlahMhs, 'rata' => $rata, 'terancam' => $terancam] = self::hadir($kelas);
 
         $sesi = $kelas->sesi()->get(['id', 'pertemuan', 'dibuka_at']);
         $sesiTerakhir = $sesi->max('dibuka_at');
@@ -35,10 +36,16 @@ class Pantauan
         $pertemuanBermateri = $kelas->materi()->pluck('pertemuan')->unique();
         $tanpaMateri = count(array_diff($terlaksanaP, $pertemuanBermateri->all()));
 
-        $kiriman = Pengumpulan::whereIn('tugas_id', $kelas->tugas()->select('id'))->get(['dikumpulkan_at', 'dinilai_at', 'nilai']);
-        $dinilai = $kiriman->whereNotNull('dinilai_at');
-        $lamaMenilai = $dinilai->isEmpty() ? null
-            : round($dinilai->avg(fn ($p) => max(0, $p->dikumpulkan_at->diffInHours($p->dinilai_at))) / 24, 1);
+        // satu kelas bisa punya ribuan kiriman: jumlah & rata-rata lama menilai dihitung di database
+        $jam = match (DB::connection()->getDriverName()) {
+            'pgsql' => 'greatest(0, extract(epoch from (dinilai_at - dikumpulkan_at)) / 3600)',
+            'sqlite' => 'max(0, (julianday(dinilai_at) - julianday(dikumpulkan_at)) * 24)',
+            default => 'greatest(0, timestampdiff(second, dikumpulkan_at, dinilai_at) / 3600)',
+        };
+        $kiriman = Pengumpulan::whereIn('tugas_id', $kelas->tugas()->select('id'))->toBase()
+            ->selectRaw("sum(case when nilai is null then 1 else 0 end) as belum, avg(case when dinilai_at is not null then {$jam} end) as jam")
+            ->first();
+        $lamaMenilai = $kiriman->jam === null ? null : round((float) $kiriman->jam / 24, 1);
 
         $terlaksana = count($terlaksanaP);
         $acuan = $sesiTerakhir ?? $kelas->created_at;
@@ -46,16 +53,15 @@ class Pantauan
 
         $data = [
             'kelas' => $kelas,
-            'rekap' => $rekap,
-            'mahasiswa' => count($rekap->baris),
+            'mahasiswa' => $jumlahMhs,
             'terlaksana' => $terlaksana,
-            'rata' => $rekap->rataRataKehadiran(),
-            'terancam' => count($rekap->terancam()),
+            'rata' => $rata,
+            'terancam' => $terancam,
             'sesiTerakhir' => $sesiTerakhir,
             'macet' => $macet,
             'luarJadwal' => $luarJadwal,
             'tanpaMateri' => $tanpaMateri,
-            'belumDinilai' => $kiriman->whereNull('nilai')->count(),
+            'belumDinilai' => (int) $kiriman->belum,
             'lamaMenilai' => $lamaMenilai,
             'janggal' => Absensi::where('kelas_id', $kelas->id)->whereNotNull('tanda')->count(),
             'ubahManual' => LogAktivitas::where('kelas_id', $kelas->id)->whereIn('aksi', ['ubah_absen', 'isi_massal'])->count(),
@@ -63,6 +69,32 @@ class Pantauan
         $data['perhatian'] = self::perhatian($data);
 
         return $data;
+    }
+
+    /**
+     * Ringkasan kehadiran satu kelas, dihitung langsung di database (bukan lewat Rekap per mahasiswa):
+     * dashboard dan halaman dosen/laboran memuat banyak kelas sekaligus.
+     *
+     * @return array{pertemuan: list<int>, mahasiswa: int, rata: float, terancam: int}
+     */
+    public static function hadir(Kelas $kelas): array
+    {
+        $n = (int) $kelas->jumlah_pertemuan;
+        $absen = Absensi::where('kelas_id', $kelas->id)
+            ->whereIn('mahasiswa_id', DB::table('kelas_mahasiswa')->where('kelas_id', $kelas->id)->select('mahasiswa_id'));
+        $perMhs = (clone $absen)->toBase()->groupBy('mahasiswa_id')
+            ->selectRaw("sum(case when status = 'H' then 1 else 0 end) as hadir, sum(case when status <> 'H' then 1 else 0 end) as tidak")
+            ->get();
+        $jumlahMhs = $kelas->mahasiswa_count ?? $kelas->mahasiswa()->count();
+        $maks = $kelas->maksTidakHadir();
+
+        return [
+            'pertemuan' => array_map('intval', (clone $absen)->distinct()->pluck('pertemuan')->all()),
+            'mahasiswa' => (int) $jumlahMhs,
+            // sama dengan rata-rata % hadir per mahasiswa di Rekap (mahasiswa tanpa absen dihitung 0%)
+            'rata' => $jumlahMhs && $n ? round($perMhs->sum('hadir') / ($jumlahMhs * $n) * 100, 1) : 0.0,
+            'terancam' => $perMhs->filter(fn ($r) => (new Kehadiran((int) $r->tidak, $maks, (int) $kelas->min_hadir))->level() !== 'aman')->count(),
+        ];
     }
 
     /** Hal yang perlu ditindaklanjuti dosen, dalam kalimat singkat. */

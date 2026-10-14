@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Asisten\MateriController;
 use App\Http\Controllers\Asisten\SoalUjianController;
+use App\Http\Controllers\Asisten\TugasController;
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\Materi;
 use App\Models\SoalUjian;
 use App\Models\Pengumpulan;
 use App\Models\Tugas;
+use App\Models\TugasLampiran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -122,6 +124,14 @@ class MatkulController extends Controller
         $kiriman = $tugas->pengumpulan()->where('mahasiswa_id', $request->user('mahasiswa')->id)->first();
 
         return view('mahasiswa.tugas', ['tugas' => $tugas, 'kelas' => $tugas->kelas, 'kiriman' => $kiriman]);
+    }
+
+    public function unduhLampiran(Request $request, Tugas $tugas, TugasLampiran $lampiran)
+    {
+        $this->pastikanIkut($request, $tugas->kelas);
+        abort_unless($lampiran->tugas_id === $tugas->id, 404);
+
+        return TugasController::kirimLampiran($lampiran);
     }
 
     public function kumpul(Request $request, Tugas $tugas)

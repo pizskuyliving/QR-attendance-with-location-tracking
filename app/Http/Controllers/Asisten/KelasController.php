@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Asisten;
 use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\LogAktivitas;
+use App\Services\Pantauan;
 use App\Services\Rekap;
 use App\Services\RekapNilai;
 use App\Support\Bobot;
@@ -39,13 +40,13 @@ class KelasController extends Controller
             ->orderBy('mata_kuliah')->orderBy('nama_kelas')
             ->get()
             ->map(function ($k) {
-                $rekap = new Rekap($k);
+                $hadir = Pantauan::hadir($k);
 
                 return [
                     'kelas' => $k,
                     'sesiAktif' => $k->sesiAktif(),
-                    'terlaksana' => $rekap->pertemuanTerlaksana(),
-                    'rata' => $rekap->rataRataKehadiran(),
+                    'terlaksana' => count($hadir['pertemuan']),
+                    'rata' => $hadir['rata'],
                 ];
             });
 
@@ -56,7 +57,11 @@ class KelasController extends Controller
     {
         self::pastikanMilik($request, $kelas);
         $tab = $request->query('tab', 'absen');
-        $rekap = new Rekap($kelas->load('mahasiswa', 'asisten', 'asisten2', 'matkul.dosen'));
+        if ($tab === 'nilai') {
+            $tab = 'rekap'; // tab Nilai sudah digabung ke Rekap & Nilai
+        }
+        // grid absen (tab Absen) butuh model lengkap (lokasi, tanda curiga); tab lain cukup status saja
+        $rekap = new Rekap($kelas->load('mahasiswa', 'asisten', 'asisten2', 'matkul.dosen'), ringan: $tab !== 'absen');
         $sesiAktif = $kelas->sesiAktif();
         $riwayatSesi = $kelas->sesi()->latest('id')->withCount(['absensi' => fn ($q) => $q->where('metode', 'qr')])->limit(20)->get();
         $riwayatScan = $tab === 'riwayat'
@@ -76,23 +81,21 @@ class KelasController extends Controller
 
         $materi = $tab === 'materi' ? $kelas->materi()->get()->groupBy('pertemuan') : null;
         $daftarTugas = $tab === 'tugas' ? $kelas->tugas()->withCount(['pengumpulan', 'pengumpulan as dinilai_count' => fn ($q) => $q->whereNotNull('nilai')])->get() : null;
-        $nilai = $tab === 'nilai' ? new RekapNilai($rekap) : null;
+        $nilai = $tab === 'rekap' ? new RekapNilai($rekap) : null;
         $soal = $tab === 'ujian' ? $kelas->soalUjian()->with('pengunggah')->get() : null;
         $jumlahJawaban = $tab === 'ujian' ? $kelas->jawabanUjian()->selectRaw('jenis, count(*) as n')->groupBy('jenis')->pluck('n', 'jenis') : null;
 
-        // catatan dosen: tampilkan 5 terbaru; yang belum dibaca ditandai dibaca saat dibuka salah satu asisten kelas
-        $catatan = $kelas->catatanDosen()->with('dosen')->limit(5)->get();
-        if ($kelas->diajarOleh($request->user())) {
-            $kelas->catatanDosen()->whereNull('dibaca_at')->update(['dibaca_at' => now()]);
-        }
+        // catatan dosen dibaca di menu Pesan; di sini cukup pengingat jumlah yang belum dibaca
+        $pesanBaru = $kelas->diajarOleh($request->user()) ? $kelas->catatanDosen()->whereNull('dibaca_at')->count() : 0;
 
-        return view('asisten.kelas', compact('kelas', 'tab', 'rekap', 'sesiAktif', 'riwayatSesi', 'riwayatScan', 'log', 'materi', 'daftarTugas', 'nilai', 'soal', 'jumlahJawaban', 'catatan'));
+        return view('asisten.kelas', compact('kelas', 'tab', 'rekap', 'sesiAktif', 'riwayatSesi', 'riwayatScan', 'log', 'materi', 'daftarTugas', 'nilai', 'soal', 'jumlahJawaban', 'pesanBaru'));
     }
 
     public function update(Request $request, Kelas $kelas)
     {
         self::pastikanMilik($request, $kelas);
         // kelas di matkul dosen: asisten hanya mengatur radius lokasi; sisanya wewenang dosen
+        self::radiusBawaan($request);
         $data = $kelas->diaturOleh($request->user()) ? self::validasi($request, $kelas) : $request->validate(self::ATURAN_LOKASI);
         $lama = $kelas->only(array_keys($data));
         $kelas->update($data);
@@ -171,12 +174,23 @@ class KelasController extends Controller
         'radius' => 'nullable|required_with:lokasi_lat,lokasi_lng|integer|min:20|max:5000',
     ];
 
+    public const RADIUS_BAWAAN = 100;
+
+    /** Titik lokasi diisi tapi radius dikosongkan: pakai radius bawaan, jangan ditolak. */
+    public static function radiusBawaan(Request $request): void
+    {
+        if ($request->filled(['lokasi_lat', 'lokasi_lng']) && ! $request->filled('radius')) {
+            $request->merge(['radius' => self::RADIUS_BAWAAN]);
+        }
+    }
+
     /** Aturan isian kelas. Kelas di matkul dosen memakai nama matkul, jadi mata_kuliah tidak diisi manual. */
     public static function validasi(Request $request, ?Kelas $kelas, bool $denganMatkul = false): array
     {
         // kelas A–G (config/absen.php); nama lama di luar daftar tetap boleh dipertahankan saat edit
         $pilihan = array_filter([...config('absen.kelas'), $kelas?->nama_kelas]);
         $denganMatkul = $denganMatkul || $kelas?->matkul_id;
+        self::radiusBawaan($request);
 
         return $request->validate([
             ...($denganMatkul ? [] : ['mata_kuliah' => 'required|string|max:100']),

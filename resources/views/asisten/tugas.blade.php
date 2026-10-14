@@ -12,6 +12,21 @@
         @if ($kiriman->count())<a class="btn soft" href="{{ route('asisten.tugas.zip', $tugas) }}">{!! \App\Support\Ikon::svg('unduh') !!} Unduh semua (ZIP)</a>@endif
     </div>
     @if ($tugas->deskripsi)<div class="card" style="white-space:pre-line">{{ $tugas->deskripsi }}</div>@endif
+    @if ($tugas->lampiran->isNotEmpty())
+        <div class="card">
+            <div class="eyebrow" style="margin-bottom:4px">Lampiran untuk mahasiswa ({{ $tugas->lampiran->count() }})</div>
+            @foreach ($tugas->lampiran as $l)
+                @php([$jl, $jc] = $l->jenis())
+                <div class="row between" style="padding:8px 0;border-top:{{ $loop->first ? '0' : '1px solid var(--line)' }};flex-wrap:nowrap;gap:10px">
+                    <div style="min-width:0;overflow-wrap:anywhere"><span class="ft {{ $jc }} sm">{{ $jl }}</span>
+                        @if ($l->adalahFile())<a href="{{ route('asisten.tugas.lampiran', [$tugas, $l]) }}">{{ $l->nama_file }}</a> <span class="small muted">{{ \App\Models\Materi::ukuranTeks($l->ukuran) }}</span>
+                        @else<a href="{{ $l->url }}" target="_blank" rel="noopener noreferrer">{{ $l->url }}</a>@endif</div>
+                    <form method="post" action="{{ route('asisten.tugas.lampiran.hapus', [$tugas, $l]) }}" data-konfirmasi="Hapus lampiran ini? Mahasiswa tidak bisa mengunduhnya lagi.">@csrf @method('delete')<button class="link-btn bad">Hapus</button></form>
+                </div>
+            @endforeach
+            <p class="small muted" style="margin:6px 0 0">Tambah file atau tautan lewat "Ubah, tambah lampiran, atau hapus tugas" di bawah.</p>
+        </div>
+    @endif
 
     <div class="kpis" style="margin-bottom:16px">
         <div class="kpi"><span>Mengumpulkan</span><b>{{ $kiriman->count() }}/{{ $mahasiswa->count() }}</b></div>
@@ -52,8 +67,8 @@
     <p class="small muted">Nilai 0–100. Tekan Simpan atau Enter di kolom nilai; perubahan nilai tercatat di tab Log. Mahasiswa bisa melihat nilai dan komentar di HP-nya.</p>
 
     <details class="card" style="margin-top:16px">
-        <summary>Ubah atau hapus tugas</summary>
-        <form method="post" action="{{ route('asisten.tugas.update', $tugas) }}" style="margin-top:12px">
+        <summary>Ubah, tambah lampiran, atau hapus tugas</summary>
+        <form method="post" action="{{ route('asisten.tugas.update', $tugas) }}" enctype="multipart/form-data" style="margin-top:12px">
             @csrf @method('put')
             @include('asisten._form_tugas', ['t' => $tugas])
             <button class="btn">Simpan perubahan</button>

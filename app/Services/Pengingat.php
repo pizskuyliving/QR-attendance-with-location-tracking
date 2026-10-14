@@ -24,7 +24,7 @@ class Pengingat
     public function kehadiran(): void
     {
         Kelas::with('mahasiswa')->get()->each(function (Kelas $kelas) {
-            foreach ((new Rekap($kelas))->terancam() as $b) {
+            foreach ((new Rekap($kelas, ringan: true))->terancam() as $b) {
                 $level = $b['kehadiran']->level();
                 if (! in_array($level, ['batas', 'lewat'], true)) {
                     continue;
