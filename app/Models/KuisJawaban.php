@@ -9,7 +9,7 @@ class KuisJawaban extends Model
 {
     protected $table = 'kuis_jawaban';
 
-    protected $fillable = ['kuis_id', 'mahasiswa_id', 'jawaban', 'benar', 'nilai', 'mulai_at', 'selesai_at'];
+    protected $fillable = ['kuis_id', 'mahasiswa_id', 'jawaban', 'benar', 'nilai', 'mulai_at', 'selesai_at', 'kirim_otomatis'];
 
     protected function casts(): array
     {

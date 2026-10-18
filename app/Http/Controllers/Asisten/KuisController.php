@@ -185,7 +185,7 @@ class KuisController extends Controller
         foreach ($soal as $s) {
             $judul[] = 'Soal '.$s->urutan.' (kunci '.strtoupper($s->kunci).')';
         }
-        array_push($judul, 'Benar', 'Nilai');
+        array_push($judul, 'Benar', 'Nilai', 'Catatan');
         $ws->fromArray($judul, null, 'A1');
         $r = 2;
         foreach ($kelas->mahasiswa()->get() as $i => $m) {
@@ -194,7 +194,7 @@ class KuisController extends Controller
             foreach ($soal as $s) {
                 $isi[] = strtoupper($j?->jawaban[$s->id] ?? '-');
             }
-            array_push($isi, $j?->benar ?? 0, $j?->nilai ?? 0);
+            array_push($isi, $j?->benar ?? 0, $j?->nilai ?? 0, $j?->kirim_otomatis === 'pindah_tab' ? 'Terkirim otomatis: pindah tab' : '');
             $ws->fromArray($isi, "\0kosong", "A{$r}");
             $ws->setCellValueExplicit("B{$r}", $m->npm, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $r++;

@@ -37,12 +37,14 @@
     @elseif ($jawaban?->selesai_at)
         <div class="card">
             <div class="alert ok" style="margin:0">Jawaban terkirim pukul {{ $jawaban->selesai_at->format('H:i') }}. Nilai dan kunci jawaban tampil setelah kuis ditutup pukul <b>{{ $kuis->ditutup_at->format('H:i') }}</b>.</div>
+            @if ($jawaban->kirim_otomatis === 'pindah_tab')<div class="alert bad small" style="margin:12px 0 0">Jawaban dikirim otomatis karena kamu meninggalkan halaman kuis (pindah tab, pindah aplikasi, atau membuka jendela lain). Asisten dapat melihat catatan ini.</div>@endif
         </div>
     @else
         <div class="kuis-waktu" data-akhir="{{ $kuis->ditutup_at->toIso8601String() }}" data-sekarang="{{ now()->toIso8601String() }}">
             <span>Sisa waktu</span><b data-sisa>{{ $kuis->ditutup_at->diffForHumans(null, true) }}</b>
         </div>
-        <form method="post" action="{{ route('mhs.kuis.kirim', $kuis) }}" id="frmKuis" data-simpan="{{ route('mhs.kuis.simpan', $kuis) }}">
+        <div class="alert bad small"><b>Jangan tinggalkan halaman ini.</b> Pindah tab, pindah aplikasi, membuka jendela/panel lain, atau memuat ulang halaman membuat jawabanmu <b>langsung terkirim</b> dan tidak bisa diubah lagi.</div>
+        <form method="post" action="{{ route('mhs.kuis.kirim', $kuis) }}" id="frmKuis" class="kuis-kunci" data-simpan="{{ route('mhs.kuis.simpan', $kuis) }}">
             @csrf
             @foreach ($urutan as $i => $u)
                 @php($s = $u['soal'])
@@ -91,6 +93,31 @@
         e.preventDefault();
         Flex.konfirmasi(kosong + ' soal belum dijawab. Kirim sekarang?', { ok: 'Kirim' }).then(ya => { if (ya) { f.dataset.lolos = 1; kirim(); } });
     });
+
+    // meninggalkan halaman = jawaban langsung dikirim. sendBeacon tetap terkirim walau tab disembunyikan/ditutup.
+    const kirimKarenaPergi = () => {
+        if (terkirim) return;
+        terkirim = true;
+        const data = new FormData(f);
+        data.append('alasan', 'pindah_tab');
+        if (!(navigator.sendBeacon && navigator.sendBeacon(f.action, data))) {
+            f.insertAdjacentHTML('beforeend', '<input type="hidden" name="alasan" value="pindah_tab">');
+            f.submit();
+            return;
+        }
+        f.querySelectorAll('input, button').forEach(el => el.disabled = true);
+        f.insertAdjacentHTML('afterbegin', '<div class="alert bad">Kamu meninggalkan halaman kuis, jadi jawaban sudah dikirim otomatis.</div>');
+    };
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) kirimKarenaPergi();
+        else if (terkirim) location.reload(); // kembali ke tab: tampilkan status terkirim dari server
+    });
+    window.addEventListener('pagehide', kirimKarenaPergi);
+    // fokus pindah ke luar halaman (panel AI/ekstensi di samping, jendela lain, kolom alamat); jeda singkat agar kedipan fokus tidak dihitung
+    window.addEventListener('blur', () => setTimeout(() => { if (!document.hasFocus()) kirimKarenaPergi(); }, 500));
+
+    // persulit menyalin soal ke aplikasi lain
+    ['copy', 'cut', 'contextmenu', 'dragstart'].forEach(ev => f.addEventListener(ev, e => e.preventDefault()));
 })();
 </script>
 @endpush

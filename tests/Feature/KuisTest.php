@@ -132,6 +132,42 @@ class KuisTest extends TestCase
         $this->actingAs($absen, 'mahasiswa')->get(route('mhs.kuis', $kuis))->assertSee('tidak tercatat hadir');
     }
 
+    public function test_pindah_tab_mengirim_otomatis_dan_tercatat(): void
+    {
+        $kuis = $this->buatKuis();
+        $m = $this->mhs('1001');
+        $soal = $kuis->soal->keyBy('urutan');
+        $this->actingAs($this->asisten, 'web')->post(route('asisten.kuis.buka', $kuis), ['durasi_menit' => 10]);
+
+        $this->actingAs($m, 'mahasiswa')->get(route('mhs.kuis', $kuis))->assertOk()->assertSee('Jangan tinggalkan halaman ini');
+        $this->postJson(route('mhs.kuis.simpan', $kuis), ['soal' => $soal[1]->id, 'pilihan' => 'a'])->assertOk();
+
+        // dikirim lewat sendBeacon saat tab disembunyikan
+        $this->post(route('mhs.kuis.kirim', $kuis), ['jawaban' => [$soal[2]->id => 'b'], 'alasan' => 'pindah_tab'])
+            ->assertSessionHas('ok', 'Jawaban dikirim otomatis karena kamu meninggalkan halaman kuis.');
+        $j = KuisJawaban::where('mahasiswa_id', $m->id)->first();
+        $this->assertNotNull($j->selesai_at);
+        $this->assertSame('pindah_tab', $j->kirim_otomatis);
+        $this->assertSame([2, 40.0], [$j->benar, $j->nilai]);
+        $this->assertTrue(LogAktivitas::where('aksi', 'mhs_kuis_pindah_tab')->exists());
+
+        // tidak bisa menjawab lagi setelah kembali ke tab
+        $this->postJson(route('mhs.kuis.simpan', $kuis), ['soal' => $soal[3]->id, 'pilihan' => 'c'])->assertStatus(422);
+        $this->get(route('mhs.kuis', $kuis))->assertSee('dikirim otomatis karena kamu meninggalkan halaman kuis');
+        $this->actingAs($this->asisten, 'web')->get(route('asisten.kuis.show', $kuis))->assertSee('pindah tab');
+    }
+
+    public function test_kirim_biasa_tidak_ditandai_otomatis(): void
+    {
+        $kuis = $this->buatKuis();
+        $m = $this->mhs('1001');
+        $this->actingAs($this->asisten, 'web')->post(route('asisten.kuis.buka', $kuis), ['durasi_menit' => 10]);
+
+        $this->actingAs($m, 'mahasiswa')->get(route('mhs.kuis', $kuis))->assertOk();
+        $this->post(route('mhs.kuis.kirim', $kuis), ['jawaban' => [], 'alasan' => 'lain'])->assertSessionHas('ok');
+        $this->assertNull(KuisJawaban::where('mahasiswa_id', $m->id)->value('kirim_otomatis'));
+    }
+
     public function test_waktu_habis_jawaban_tersimpan_tetap_dihitung(): void
     {
         $kuis = $this->buatKuis();

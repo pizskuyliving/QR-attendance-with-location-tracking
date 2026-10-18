@@ -87,6 +87,7 @@
                         <td class="c">
                             @if (! isset($hadir[$m->id]))<span class="badge grey">tidak hadir</span>
                             @elseif (! $j)<span class="badge A">{{ $kuis->berjalan() ? 'belum membuka' : 'tidak menjawab' }}</span>
+                            @elseif ($j->selesai_at && $j->kirim_otomatis === 'pindah_tab')<span class="badge A" title="Mahasiswa meninggalkan halaman kuis (pindah tab/aplikasi/jendela) pukul {{ $j->selesai_at->format('H:i:s') }}; jawaban terkirim otomatis">pindah tab</span>
                             @elseif ($j->selesai_at)<span class="badge H">terkirim</span>
                             @else<span class="badge I">{{ $kuis->berjalan() ? 'mengerjakan' : 'tidak dikirim' }}</span>@endif
                         </td>

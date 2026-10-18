@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mahasiswa;
 use App\Http\Controllers\Controller;
 use App\Models\Kuis;
 use App\Models\KuisJawaban;
+use App\Models\LogAktivitas;
 use Illuminate\Http\Request;
 
 /** Mahasiswa mengerjakan kuis refleksi: hanya yang hadir, satu kali, dalam batas waktu. Jawaban tersimpan tiap memilih. */
@@ -48,7 +49,7 @@ class KuisController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    /** Kirim akhir (tombol Kirim atau otomatis saat waktu habis). */
+    /** Kirim akhir: tombol Kirim, otomatis saat waktu habis, atau otomatis saat mahasiswa meninggalkan halaman (alasan=pindah_tab). */
     public function kirim(Request $request, Kuis $kuis)
     {
         [$mhs, $jawaban] = $this->siapkan($request, $kuis);
@@ -56,9 +57,16 @@ class KuisController extends Controller
         if ($galat = $this->tolak($kuis, $mhs, $jawaban)) {
             return redirect()->route('mhs.kuis', $kuis)->withErrors(['kuis' => $galat]);
         }
-        $this->catat($kuis, $jawaban, $pilihan, selesai: true);
+        $otomatis = $request->input('alasan') === 'pindah_tab' ? 'pindah_tab' : null;
+        $this->catat($kuis, $jawaban, $pilihan, selesai: true, otomatis: $otomatis);
+        if ($otomatis) {
+            LogAktivitas::catat($kuis->kelas, 'mhs_kuis_pindah_tab', "{$mhs->npm} {$mhs->nama} meninggalkan halaman kuis P{$kuis->pertemuan}; jawaban dikirim otomatis",
+                ['kuis_id' => $kuis->id, 'mahasiswa_id' => $mhs->id]);
+        }
 
-        return redirect()->route('mhs.kuis', $kuis)->with('ok', 'Jawaban terkirim. Nilai dan kunci jawaban tampil setelah kuis ditutup.');
+        return redirect()->route('mhs.kuis', $kuis)->with('ok', $otomatis
+            ? 'Jawaban dikirim otomatis karena kamu meninggalkan halaman kuis.'
+            : 'Jawaban terkirim. Nilai dan kunci jawaban tampil setelah kuis ditutup.');
     }
 
     private function tolak(Kuis $kuis, $mhs, ?KuisJawaban $jawaban): ?string
@@ -72,10 +80,10 @@ class KuisController extends Controller
         };
     }
 
-    private function catat(Kuis $kuis, KuisJawaban $jawaban, array $baru, bool $selesai = false): void
+    private function catat(Kuis $kuis, KuisJawaban $jawaban, array $baru, bool $selesai = false, ?string $otomatis = null): void
     {
         $isi = array_replace($jawaban->jawaban ?? [], array_map('strval', $baru));
         [$benar, $nilai] = $kuis->nilaiDari($isi);
-        $jawaban->update(['jawaban' => $isi, 'benar' => $benar, 'nilai' => $nilai] + ($selesai ? ['selesai_at' => now()] : []));
+        $jawaban->update(['jawaban' => $isi, 'benar' => $benar, 'nilai' => $nilai] + ($selesai ? ['selesai_at' => now(), 'kirim_otomatis' => $otomatis] : []));
     }
 }
