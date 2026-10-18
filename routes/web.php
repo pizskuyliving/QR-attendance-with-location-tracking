@@ -3,6 +3,7 @@
 use App\Http\Controllers\Asisten\AbsensiController;
 use App\Http\Controllers\Asisten\DuaLangkahController;
 use App\Http\Controllers\Asisten\KelasController;
+use App\Http\Controllers\Asisten\KuisController;
 use App\Http\Controllers\Asisten\MahasiswaController;
 use App\Http\Controllers\Asisten\ProfilController;
 use App\Http\Controllers\Asisten\SesiController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Dosen\KelasController as DosenKelasController;
 use App\Http\Controllers\Dosen\MatkulController as DosenMatkulController;
 use App\Http\Controllers\Mahasiswa\AbsenController;
 use App\Http\Controllers\Mahasiswa\KelasController as KelasMahasiswaController;
+use App\Http\Controllers\Mahasiswa\KuisController as MhsKuisController;
 use App\Http\Controllers\Mahasiswa\MatkulController;
 use App\Http\Controllers\Asisten\MateriController;
 use App\Http\Controllers\Asisten\PesanController;
@@ -48,7 +50,7 @@ Route::post('/lupa-sandi/kirim-ulang', [LupaSandiController::class, 'kirimUlang'
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // ---------- Mahasiswa ----------
-Route::middleware('auth:mahasiswa')->prefix('m')->name('mhs.')->group(function () {
+Route::middleware(['auth:mahasiswa', 'sesi.sandi:mahasiswa'])->prefix('m')->name('mhs.')->group(function () {
     Route::get('/', [AbsenController::class, 'home'])->name('home');
     Route::get('/scan', [AbsenController::class, 'scan'])->name('scan');
     Route::post('/absen', [AbsenController::class, 'absen'])->middleware('throttle:30,1')->name('absen');
@@ -67,13 +69,16 @@ Route::middleware('auth:mahasiswa')->prefix('m')->name('mhs.')->group(function (
     Route::post('/tugas/{tugas}', [MatkulController::class, 'kumpul'])->middleware('throttle:20,1')->name('tugas.kumpul');
     Route::get('/tugas/{tugas}/unduh', [MatkulController::class, 'unduhKiriman'])->name('tugas.unduh');
     Route::get('/tugas/{tugas}/lampiran/{lampiran}', [MatkulController::class, 'unduhLampiran'])->name('tugas.lampiran');
+    Route::get('/kuis/{kuis}', [MhsKuisController::class, 'show'])->name('kuis');
+    Route::post('/kuis/{kuis}/simpan', [MhsKuisController::class, 'simpan'])->middleware('throttle:60,1')->name('kuis.simpan');
+    Route::post('/kuis/{kuis}', [MhsKuisController::class, 'kirim'])->middleware('throttle:10,1')->name('kuis.kirim');
     Route::post('/kelas/{kelas}', [KelasMahasiswaController::class, 'gabung'])->middleware('throttle:30,1')->name('kelas.gabung');
     Route::delete('/kelas/{kelas}', [KelasMahasiswaController::class, 'keluar'])->middleware('throttle:30,1')->name('kelas.keluar');
     Route::post('/akun/sandi', [AuthController::class, 'gantiPassword'])->middleware('throttle:5,1')->name('sandi');
 });
 
 // ---------- Asisten ----------
-Route::middleware(['auth:web', 'asisten.aktif'])->prefix('asisten')->name('asisten.')->group(function () {
+Route::middleware(['auth:web', 'asisten.aktif', 'sesi.sandi:web'])->prefix('asisten')->name('asisten.')->group(function () {
     Route::get('/', [KelasController::class, 'dashboard'])->name('dashboard');
 
     // kelola kelas: asisten & admin
@@ -106,7 +111,7 @@ Route::middleware(['auth:web', 'asisten.aktif'])->prefix('asisten')->name('asist
             Route::put('/tenggat', [UjianController::class, 'tenggat'])->name('tenggat');
             Route::post('/nilai/{mahasiswa}', [UjianController::class, 'nilai'])->name('nilai');
             Route::get('/jawaban/{jawaban}', [UjianController::class, 'unduh'])->name('unduh');
-            Route::get('/zip', [UjianController::class, 'zip'])->name('zip');
+            Route::get('/zip', [UjianController::class, 'zip'])->middleware('throttle:10,1')->name('zip');
         });
 
         Route::post('/kelas/{kelas}/tugas', [TugasController::class, 'store'])->name('tugas.store');
@@ -115,9 +120,17 @@ Route::middleware(['auth:web', 'asisten.aktif'])->prefix('asisten')->name('asist
         Route::delete('/tugas/{tugas}', [TugasController::class, 'destroy'])->name('tugas.destroy');
         Route::post('/tugas/{tugas}/kiriman/{pengumpulan}/nilai', [TugasController::class, 'nilai'])->name('tugas.nilai');
         Route::get('/tugas/{tugas}/kiriman/{pengumpulan}', [TugasController::class, 'unduh'])->name('tugas.unduh');
-        Route::get('/tugas/{tugas}/zip', [TugasController::class, 'unduhSemua'])->name('tugas.zip');
+        Route::get('/tugas/{tugas}/zip', [TugasController::class, 'unduhSemua'])->middleware('throttle:10,1')->name('tugas.zip');
         Route::get('/tugas/{tugas}/lampiran/{lampiran}', [TugasController::class, 'unduhLampiran'])->name('tugas.lampiran');
         Route::delete('/tugas/{tugas}/lampiran/{lampiran}', [TugasController::class, 'hapusLampiran'])->name('tugas.lampiran.hapus');
+        Route::post('/kelas/{kelas}/kuis', [KuisController::class, 'store'])->name('kuis.store');
+        Route::get('/kuis/{kuis}', [KuisController::class, 'show'])->name('kuis.show');
+        Route::put('/kuis/{kuis}', [KuisController::class, 'update'])->name('kuis.update');
+        Route::delete('/kuis/{kuis}', [KuisController::class, 'destroy'])->name('kuis.destroy');
+        Route::post('/kuis/{kuis}/buka', [KuisController::class, 'buka'])->name('kuis.buka');
+        Route::post('/kuis/{kuis}/tutup', [KuisController::class, 'tutup'])->name('kuis.tutup');
+        Route::post('/kuis/{kuis}/salin', [KuisController::class, 'salin'])->name('kuis.salin');
+        Route::get('/kuis/{kuis}/excel', [KuisController::class, 'excel'])->middleware('throttle:10,1')->name('kuis.excel');
 
         Route::post('/kelas/{kelas}/sesi', [SesiController::class, 'buka'])->name('sesi.buka');
         Route::get('/sesi/{sesi}', [SesiController::class, 'show'])->name('sesi.show');
@@ -126,7 +139,7 @@ Route::middleware(['auth:web', 'asisten.aktif'])->prefix('asisten')->name('asist
     });
 
     // unduh rekap Excel: juga untuk dosen matkul yang ditautkan (dicek di controller)
-    Route::get('/kelas/{kelas}/export', [AbsensiController::class, 'export'])->name('absensi.export');
+    Route::get('/kelas/{kelas}/export', [AbsensiController::class, 'export'])->middleware('throttle:10,1')->name('absensi.export');
     Route::get('/kelas/{kelas}/soal/{soal}', [SoalUjianController::class, 'unduh'])->name('soal.unduh');
 
     // mata kuliah & pantauan asisten: dosen & admin
@@ -135,6 +148,8 @@ Route::middleware(['auth:web', 'asisten.aktif'])->prefix('asisten')->name('asist
         Route::get('/pesan', [PesanController::class, 'index'])->name('pesan');
         Route::post('/pesan/baca-semua', [PesanController::class, 'bacaSemua'])->name('pesan.baca-semua');
         Route::post('/pesan/{catatan}/baca', [PesanController::class, 'baca'])->name('pesan.baca');
+        Route::delete('/pesan/dibaca', [PesanController::class, 'hapusDibaca'])->name('pesan.hapus-dibaca');
+        Route::delete('/pesan/{catatan}', [PesanController::class, 'hapus'])->name('pesan.hapus');
     });
 
     Route::middleware('peran:admin,dosen')->group(function () {
@@ -147,7 +162,7 @@ Route::middleware(['auth:web', 'asisten.aktif'])->prefix('asisten')->name('asist
         Route::put('/matkul/{matkul}/kelas/{kelas}/asisten', [DosenKelasController::class, 'tugaskan'])->name('matkul.kelas.asisten');
         Route::delete('/matkul/{matkul}/kelas/{kelas}', [DosenKelasController::class, 'destroy'])->name('matkul.kelas.destroy');
         Route::post('/matkul/{matkul}/kelas/{kelas}/catatan', [DosenMatkulController::class, 'catatan'])->middleware('throttle:10,1')->name('matkul.catatan');
-        Route::get('/matkul/{matkul}/export', [DosenMatkulController::class, 'export'])->name('matkul.export');
+        Route::get('/matkul/{matkul}/export', [DosenMatkulController::class, 'export'])->middleware('throttle:10,1')->name('matkul.export');
         Route::delete('/matkul/{matkul}', [DosenMatkulController::class, 'destroy'])->name('matkul.destroy');
     });
 

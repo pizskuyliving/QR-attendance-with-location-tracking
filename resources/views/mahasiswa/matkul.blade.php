@@ -44,7 +44,8 @@
             @endif
             @for ($p = 1; $p <= $n; $p++)
                 @php($a = $absen[$p] ?? null)
-                @php($isi = collect($materi[$p] ?? [])->count() + collect($tugas[$p] ?? [])->count())
+                @php($q = $kuis[$p] ?? null)
+                @php($isi = collect($materi[$p] ?? [])->count() + collect($tugas[$p] ?? [])->count() + ($q ? 1 : 0))
                 <section class="pt {{ $isi ? '' : 'kosong' }}">
                     <div class="pt-h">
                         <span class="pt-n">{{ $p }}</span>
@@ -75,6 +76,18 @@
                                     </span>
                                 </a></li>
                             @endforeach
+                            @if ($q)
+                                @php($nq = $nilaiKuis[$q->id] ?? null)
+                                <li><a class="item" href="{{ route('mhs.kuis', $q) }}">
+                                    <span class="ft kuis">KUIS</span>
+                                    <span class="tx"><b>Kuis refleksi</b><span class="meta">{{ $q->berjalan() ? 'Ditutup pukul '.$q->ditutup_at->format('H:i') : 'Selesai '.$q->ditutup_at->translatedFormat('d M Y') }}</span></span>
+                                    <span class="end">
+                                        @if ($q->selesai())<span class="badge {{ ($nq?->nilai ?? 0) >= 60 ? 'H' : 'A' }}">Nilai {{ $nq ? $nq->nilai + 0 : 0 }}</span>
+                                        @elseif ($nq?->selesai_at)<span class="badge S">Terkirim</span>
+                                        @else<span class="badge I">Kerjakan</span>@endif
+                                    </span>
+                                </a></li>
+                            @endif
                         </ul>
                     @endif
                 </section>

@@ -9,6 +9,7 @@
                 @csrf @method('put')
                 <div class="field"><label>Nama</label><input name="name" value="{{ old('name', $user->name) }}" required></div>
                 <div class="field"><label>Email</label><input type="email" name="email" value="{{ old('email', $user->email) }}" required></div>
+                <div class="field"><label>Kata sandi <span class="muted small">(wajib bila email diganti)</span></label><input type="password" name="password_lama" autocomplete="current-password"></div>
                 <p class="small muted">Peran: {{ $user->peranLabel() }}</p>
                 <button class="btn">Simpan</button>
             </form>

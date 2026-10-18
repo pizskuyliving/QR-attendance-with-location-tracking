@@ -82,13 +82,15 @@ class KelasController extends Controller
         $materi = $tab === 'materi' ? $kelas->materi()->get()->groupBy('pertemuan') : null;
         $daftarTugas = $tab === 'tugas' ? $kelas->tugas()->withCount(['pengumpulan', 'pengumpulan as dinilai_count' => fn ($q) => $q->whereNotNull('nilai')])->get() : null;
         $nilai = $tab === 'rekap' ? new RekapNilai($rekap) : null;
+        $daftarKuis = $tab === 'kuis' ? $kelas->kuis()->withCount('jawaban')->withAvg('jawaban', 'nilai')->get() : null;
+        $kuisTerpakai = $daftarKuis?->pluck('pertemuan')->map(fn ($p) => (int) $p)->all() ?? [];
         $soal = $tab === 'ujian' ? $kelas->soalUjian()->with('pengunggah')->get() : null;
         $jumlahJawaban = $tab === 'ujian' ? $kelas->jawabanUjian()->selectRaw('jenis, count(*) as n')->groupBy('jenis')->pluck('n', 'jenis') : null;
 
         // catatan dosen dibaca di menu Pesan; di sini cukup pengingat jumlah yang belum dibaca
         $pesanBaru = $kelas->diajarOleh($request->user()) ? $kelas->catatanDosen()->whereNull('dibaca_at')->count() : 0;
 
-        return view('asisten.kelas', compact('kelas', 'tab', 'rekap', 'sesiAktif', 'riwayatSesi', 'riwayatScan', 'log', 'materi', 'daftarTugas', 'nilai', 'soal', 'jumlahJawaban', 'pesanBaru'));
+        return view('asisten.kelas', compact('kelas', 'tab', 'rekap', 'sesiAktif', 'riwayatSesi', 'riwayatScan', 'log', 'materi', 'daftarTugas', 'daftarKuis', 'kuisTerpakai', 'nilai', 'soal', 'jumlahJawaban', 'pesanBaru'));
     }
 
     public function update(Request $request, Kelas $kelas)
@@ -115,14 +117,14 @@ class KelasController extends Controller
         $data = Bobot::validasi($request);
         $lama = self::teksBobot($kelas);
         $kelas->update($data);
-        LogAktivitas::catat($kelas, 'ubah_bobot', "{$request->user()->name} mengubah bobot nilai (hadir/tugas/UTS/UAS) {$lama} → ".self::teksBobot($kelas));
+        LogAktivitas::catat($kelas, 'ubah_bobot', "{$request->user()->name} mengubah bobot nilai (hadir/tugas/kuis/UTS/UAS) {$lama} → ".self::teksBobot($kelas));
 
         return back()->with('ok', 'Bobot nilai disimpan.');
     }
 
     public static function teksBobot(Kelas $k): string
     {
-        return "{$k->bobot_hadir}/{$k->bobot_tugas}/{$k->bobot_uts}/{$k->bobot_uas}";
+        return "{$k->bobot_hadir}/{$k->bobot_tugas}/{$k->bobot_kuis}/{$k->bobot_uts}/{$k->bobot_uas}";
     }
 
     /** Simpan nilai UTS & UAS semua mahasiswa kelas sekaligus (kosong = belum ada nilai). */

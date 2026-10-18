@@ -652,3 +652,33 @@ input[type=date]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and
 .pesan.baru .isi{font-weight:600}
 .titik-baru{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px;vertical-align:middle}
 @media (max-width:700px){.menu-hitung{margin-left:3px;min-width:16px;height:16px;padding:0 3px;border-radius:3px}}
+/* kuis refleksi */
+.kuis-soal{border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px;margin:0 0 12px}
+.kuis-soal legend{font-weight:700;padding:0 6px;font-size:.875rem}
+.kuis-opsi{display:flex;gap:10px;align-items:center;margin-top:8px;font-weight:400}
+.kuis-opsi input:not([type=radio]){flex:1;min-width:0}
+.kuis-huruf{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:.8rem;background:var(--tint-2);color:var(--nebula-ink)}
+.kuis-analisis{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));margin-bottom:8px}
+.kuis-analisis .card{margin:0;padding:18px}
+.kuis-persen{font-family:var(--serif);font-size:1.35rem;flex:none}
+.kuis-persen.rendah{color:var(--bad)}.kuis-persen.sedang{color:var(--warn)}.kuis-persen.tinggi{color:var(--ok)}
+.kuis-sebaran{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.kuis-sebaran li{display:grid;grid-template-columns:28px 1fr auto;gap:4px 10px;align-items:center;font-size:.875rem}
+.kuis-sebaran li.kunci .kuis-huruf{background:var(--ok-soft);color:var(--ok)}
+.kuis-sebaran .bar{grid-column:2/4;height:6px;border-radius:9999px;background:var(--tint)}
+.kuis-sebaran .bar i{display:block;height:100%;border-radius:inherit;background:var(--nebula)}
+.kuis-sebaran li.kunci .bar i{background:var(--ok)}
+.ok-txt{color:var(--ok);font-weight:700}.bad-txt{color:var(--bad);font-weight:700}
+.kuis-waktu{position:sticky;top:8px;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;margin-bottom:12px;border-radius:14px;background:var(--surface);border:1px solid var(--line);font-weight:600}
+.kuis-waktu b{font-family:var(--mono);font-size:1.15rem}
+.kuis-waktu.hampir{background:var(--bad-soft);border-color:var(--bad);color:var(--bad-ink)}
+.kuis-m .tanya{margin:6px 0 4px;font-weight:600;white-space:pre-line}
+.pilih{display:flex;gap:12px;align-items:center;padding:12px 14px;margin-top:8px;border:1.5px solid var(--line);border-radius:14px;cursor:pointer;font-weight:400;font-size:1rem}
+.pilih input{position:absolute;opacity:0;pointer-events:none}
+.pilih:has(input:checked){border-color:var(--nebula);background:var(--tint-2)}
+.pilih:has(input:checked) .kuis-huruf{background:var(--nebula);color:var(--on-nebula)}
+.pilih:has(input:focus-visible){box-shadow:var(--glow-nebula-sm)}
+.pilih.benar{border-color:var(--ok);background:var(--ok-soft)}.pilih.benar .kuis-huruf{background:var(--ok);color:var(--card)}
+.pilih.salah{border-color:var(--bad);background:var(--bad-soft)}
+.ft.kuis{background:var(--star-soft);color:var(--star-ink)}
+.kuis-aktif{border-color:var(--star);box-shadow:var(--glow-star-sm)}

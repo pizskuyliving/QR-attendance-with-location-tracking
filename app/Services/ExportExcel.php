@@ -50,11 +50,11 @@ class ExportExcel
         }
         array_push($judul, 'H', 'I', 'S', 'A', '% Hadir');
         $kolomHadir = count($judul);
-        array_push($judul, 'Tugas', 'UTS', 'UAS', 'Nilai akhir', 'Huruf');
+        array_push($judul, 'Tugas', 'Kuis', 'UTS', 'UAS', 'Nilai akhir', 'Huruf');
         $kolomAkhir = Coordinate::stringFromColumnIndex(count($judul));
         $hadir = Coordinate::stringFromColumnIndex($kolomHadir);
         $nilaiAwal = Coordinate::stringFromColumnIndex($kolomHadir + 1);
-        $nilaiAkhir = Coordinate::stringFromColumnIndex($kolomHadir + 4);
+        $nilaiAkhir = Coordinate::stringFromColumnIndex($kolomHadir + 5);
 
         $ws->setCellValue('A1', 'REKAP ABSENSI & NILAI MAHASISWA');
         $ws->mergeCells("A1:{$kolomAkhir}1");
@@ -65,7 +65,7 @@ class ExportExcel
             ['Mata Kuliah', $kelas->mata_kuliah],
             ['Kelas', $kelas->nama_kelas],
             ['Asisten', $kelas->namaAsisten()],
-            ['Bobot nilai', "Kehadiran {$kelas->bobot_hadir}% · Tugas {$kelas->bobot_tugas}% · UTS {$kelas->bobot_uts}% · UAS {$kelas->bobot_uas}%"],
+            ['Bobot nilai', "Kehadiran {$kelas->bobot_hadir}% · Tugas {$kelas->bobot_tugas}% · Kuis {$kelas->bobot_kuis}% · UTS {$kelas->bobot_uts}% · UAS {$kelas->bobot_uas}%"],
             ['Dicetak', now()->translatedFormat('d F Y H:i')],
         ];
         foreach ($info as $i => [$k, $v]) {
@@ -84,7 +84,7 @@ class ExportExcel
             }
             $v = $nilai->baris[$i];
             array_push($data, $b['total']['H'], $b['total']['I'], $b['total']['S'], $b['total']['A'], $b['persen'] / 100,
-                $v['rata_tugas'] ?? '-', $v['uts'] ?? '-', $v['uas'] ?? '-', $v['akhir'] ?? '-', $v['huruf'] ?? '-');
+                $v['rata_tugas'] ?? '-', $v['rata_kuis'] ?? '-', $v['uts'] ?? '-', $v['uas'] ?? '-', $v['akhir'] ?? '-', $v['huruf'] ?? '-');
             $ws->fromArray($data, self::TANPA_NULL, "A{$r}");
             $ws->setCellValueExplicit("B{$r}", $b['mahasiswa']->npm, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
             $r++;
@@ -130,7 +130,7 @@ class ExportExcel
 
         $keterangan = $rAkhir + 2;
         $ws->setCellValue("A{$keterangan}", 'Keterangan: '.collect(Absensi::STATUS)->map(fn ($v, $k) => "$k = $v")->implode(', ').'. % Hadir = jumlah Hadir ÷ '.$n.' pertemuan.');
-        $ws->setCellValue('A'.($keterangan + 1), 'Nilai akhir = rata-rata berbobot kehadiran, tugas, UTS, dan UAS; komponen yang belum ada nilainya dilewati. Tugas lewat tenggat tanpa kiriman = 0; kiriman belum dinilai belum dihitung.');
+        $ws->setCellValue('A'.($keterangan + 1), 'Nilai akhir = rata-rata berbobot kehadiran, tugas, kuis, UTS, dan UAS; komponen yang belum ada nilainya dilewati. Tugas lewat tenggat tanpa kiriman = 0; kiriman belum dinilai belum dihitung. Kuis yang tidak dijawab = 0.');
         $ws->getStyle("A{$keterangan}:A".($keterangan + 1))->getFont()->setItalic(true)->setSize(9);
 
         self::tandaTangan($ws, $kelas, $keterangan + 3, count($judul));

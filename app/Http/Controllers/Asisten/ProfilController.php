@@ -19,10 +19,20 @@ class ProfilController extends Controller
     public function update(Request $request)
     {
         $u = $request->user();
-        $u->update($request->validate([
+        $request->merge(['email' => mb_strtolower(trim((string) $request->input('email')))]);
+        $data = $request->validate([
             'name' => 'required|string|max:100',
             'email' => ['required', 'email', Rule::unique('users')->ignore($u->id)],
-        ]));
+        ]);
+        // email dipakai untuk lupa sandi: menggantinya wajib dengan kata sandi, agar sesi curian tidak bisa mengambil alih akun
+        if ($data['email'] !== $u->email) {
+            $request->validate(['password_lama' => 'required|current_password:web'], [
+                'password_lama.required' => 'Masukkan kata sandi untuk mengganti email.',
+                'password_lama.current_password' => 'Kata sandi salah.',
+            ]);
+            LogAktivitas::catat(null, 'ganti_email', "{$u->name} mengganti email akun dari {$u->email} ke {$data['email']}");
+        }
+        $u->update($data);
 
         return back()->with('ok', 'Profil diperbarui.');
     }
@@ -32,13 +42,15 @@ class ProfilController extends Controller
     public function tambahAsisten(Request $request)
     {
         abort_unless($request->user()->role === 'admin', 403);
+        $request->merge(['email' => mb_strtolower(trim((string) $request->input('email')))]);
         $data = $request->validate([
             'name' => 'required|string|max:100',
             'email' => 'required|email|unique:users',
             'password' => ['required', Password::defaults()],
             'role' => 'required|in:admin,asisten,dosen',
         ]);
-        User::create($data);
+        $u = User::create($data);
+        LogAktivitas::catat(null, 'akun_tambah', "{$request->user()->name} membuat akun {$u->peranLabel()} {$u->name} ({$u->email})");
 
         return back()->with('ok', "Akun {$data['name']} dibuat.");
     }
@@ -84,6 +96,7 @@ class ProfilController extends Controller
         // kelas di matkul dosen tetap ada dan menjadi "belum ada asisten"
         $user->kelas()->whereNull('matkul_id')->get()->each->delete();
         $user->delete();
+        LogAktivitas::catat(null, 'akun_hapus', "{$request->user()->name} menghapus akun {$user->peranLabel()} {$user->name} ({$user->email})");
 
         return back()->with('ok', "Akun {$user->name} dihapus.");
     }

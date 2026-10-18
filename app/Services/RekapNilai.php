@@ -2,14 +2,16 @@
 
 namespace App\Services;
 
+use App\Models\KuisJawaban;
 use App\Models\Pengumpulan;
 
 /**
  * Nilai akhir per mahasiswa = bobot_hadir% × persentase hadir + bobot_tugas% × rata-rata tugas
- *   + bobot_uts% × nilai UTS + bobot_uas% × nilai UAS.
+ *   + bobot_kuis% × rata-rata kuis + bobot_uts% × nilai UTS + bobot_uas% × nilai UAS.
  * Komponen yang belum ada nilainya (belum ada tugas dihitung, UTS/UAS belum diisi) dilewati dan bobotnya dibagi ke komponen lain.
  * Tugas yang dihitung: yang sudah lewat tenggat, atau yang sudah dinilai.
  * Tidak mengumpulkan tugas yang sudah lewat tenggat = 0. Sudah mengumpulkan tapi belum dinilai = belum dihitung (ditandai).
+ * Kuis yang dihitung: yang sudah selesai (waktunya habis). Tidak menjawab (termasuk tidak hadir) = 0.
  */
 class RekapNilai
 {
@@ -18,12 +20,18 @@ class RekapNilai
 
     public $tugas;
 
+    /** Kuis yang sudah selesai, urut pertemuan. */
+    public $kuis;
+
     public function __construct(public Rekap $rekap)
     {
         $kelas = $rekap->kelas;
         $this->tugas = $kelas->tugas()->get();
         $kiriman = Pengumpulan::whereIn('tugas_id', $this->tugas->pluck('id'))->get()
             ->groupBy('mahasiswa_id');
+        $this->kuis = $kelas->kuis()->whereNotNull('dibuka_at')->where('ditutup_at', '<=', now())->get();
+        $nilaiKuis = KuisJawaban::whereIn('kuis_id', $this->kuis->pluck('id'))->toBase()->get(['kuis_id', 'mahasiswa_id', 'nilai'])
+            ->groupBy('mahasiswa_id')->map(fn ($j) => $j->pluck('nilai', 'kuis_id'));
 
         foreach ($rekap->baris as $b) {
             $mhs = $b['mahasiswa'];
@@ -47,11 +55,17 @@ class RekapNilai
                 }
             }
             $rataTugas = $dihitung ? round(array_sum($dihitung) / count($dihitung), 1) : null;
+            $kuis = [];
+            foreach ($this->kuis as $q) {
+                $kuis[$q->id] = (float) ($nilaiKuis[$mhs->id][$q->id] ?? 0);
+            }
+            $rataKuis = $kuis ? round(array_sum($kuis) / count($kuis), 1) : null;
             $uts = $mhs->pivot?->nilai_uts === null ? null : (float) $mhs->pivot->nilai_uts;
             $uas = $mhs->pivot?->nilai_uas === null ? null : (float) $mhs->pivot->nilai_uas;
             $akhir = self::akhir([
                 [$b['persen'], (int) $kelas->bobot_hadir],
                 [$rataTugas, (int) $kelas->bobot_tugas],
+                [$rataKuis, (int) $kelas->bobot_kuis],
                 [$uts, (int) $kelas->bobot_uts],
                 [$uas, (int) $kelas->bobot_uas],
             ]);
@@ -62,6 +76,8 @@ class RekapNilai
                 'tugas' => $nilaiTugas,
                 'kiriman' => $milik,
                 'rata_tugas' => $rataTugas,
+                'kuis' => $kuis,
+                'rata_kuis' => $rataKuis,
                 'uts' => $uts,
                 'uas' => $uas,
                 'belum_dinilai' => $belumDinilai,

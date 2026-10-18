@@ -13,7 +13,8 @@ class HeaderKeamanan
     {
         $response = $next($request);
         $response->headers->set('X-Frame-Options', 'DENY');
-        $response->headers->set('Content-Security-Policy', "frame-ancestors 'none'");
+        // tanpa script-src: halaman masih memakai <script> & onclick inline; yang dibatasi plugin, <base>, dan tujuan form
+        $response->headers->set('Content-Security-Policy', "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'");
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'same-origin');
         $response->headers->set('Permissions-Policy', 'camera=(self), geolocation=(self), microphone=()');

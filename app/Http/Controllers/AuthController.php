@@ -138,6 +138,7 @@ class AuthController extends Controller
             return back()->withErrors(['captcha' => $galat])->onlyInput('email', 'peran');
         }
 
+        $data['email'] = mb_strtolower(trim($data['email']));
         if (! Auth::validate($data)) {
             return $this->salahPeran($request, false);
         }

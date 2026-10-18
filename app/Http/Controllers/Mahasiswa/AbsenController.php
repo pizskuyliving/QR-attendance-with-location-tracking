@@ -47,7 +47,15 @@ class AbsenController extends Controller
             ->values())
             ->sortBy(fn ($u) => $u['tenggat']->getTimestamp())->values();
 
-        return view('mahasiswa.home', compact('mhs', 'ringkasan', 'tugasAktif', 'ujianAktif'));
+        // kuis yang sedang dibuka di pertemuan yang ia hadiri dan belum dikirim
+        $kuisAktif = \App\Models\Kuis::with('kelas')->whereIn('kelas_id', $kelas->pluck('id'))
+            ->whereNotNull('dibuka_at')->where('ditutup_at', '>', now())
+            ->whereExists(fn ($q) => $q->selectRaw('1')->from('absensi')->whereColumn('absensi.kelas_id', 'kuis.kelas_id')
+                ->whereColumn('absensi.pertemuan', 'kuis.pertemuan')->where('absensi.mahasiswa_id', $mhs->id)->where('absensi.status', 'H'))
+            ->whereDoesntHave('jawaban', fn ($q) => $q->where('mahasiswa_id', $mhs->id)->whereNotNull('selesai_at'))
+            ->orderBy('ditutup_at')->get();
+
+        return view('mahasiswa.home', compact('mhs', 'ringkasan', 'tugasAktif', 'ujianAktif', 'kuisAktif'));
     }
 
     /** Nama cookie penanda HP. Isinya acak, terenkripsi oleh Laravel, berlaku 5 tahun. */

@@ -91,7 +91,7 @@ class ExportMatkul
     private static function lembarMahasiswa(Worksheet $ws, array $pantau): void
     {
         $ws->setTitle('Semua Mahasiswa');
-        $judul = ['No', 'Kelas', 'NPM', 'Nama', 'H', 'I', 'S', 'A', '% Hadir', 'Status kehadiran', 'Rata-rata tugas', 'UTS', 'UAS', 'Nilai akhir', 'Huruf'];
+        $judul = ['No', 'Kelas', 'NPM', 'Nama', 'H', 'I', 'S', 'A', '% Hadir', 'Status kehadiran', 'Rata-rata tugas', 'Rata-rata kuis', 'UTS', 'UAS', 'Nilai akhir', 'Huruf'];
         $akhir = Coordinate::stringFromColumnIndex(count($judul));
         $ws->fromArray($judul, null, 'A1');
         $r = 2;
@@ -103,7 +103,7 @@ class ExportMatkul
                 $ws->fromArray([
                     $r - 1, $p['kelas']->nama_kelas, $m->npm, ExportExcel::teks($m->nama),
                     $b['total']['H'], $b['total']['I'], $b['total']['S'], $b['total']['A'], $b['persen'] / 100,
-                    $b['kehadiran']->teks(), $n['rata_tugas'] ?? '-', $n['uts'] ?? '-', $n['uas'] ?? '-', $n['akhir'] ?? '-', $n['huruf'] ?? '-',
+                    $b['kehadiran']->teks(), $n['rata_tugas'] ?? '-', $n['rata_kuis'] ?? '-', $n['uts'] ?? '-', $n['uas'] ?? '-', $n['akhir'] ?? '-', $n['huruf'] ?? '-',
                 ], self::TANPA_NULL, "A{$r}");
                 $ws->setCellValueExplicit("C{$r}", $m->npm, DataType::TYPE_STRING);
                 if (in_array($b['kehadiran']->level(), ['batas', 'lewat'], true)) {
@@ -115,11 +115,11 @@ class ExportMatkul
         $rAkhir = max($r - 1, 1);
         self::gayaTabel($ws, "A1:{$akhir}1", "A1:{$akhir}{$rAkhir}");
         $ws->getStyle("I2:I{$rAkhir}")->getNumberFormat()->setFormatCode('0.0%');
-        $ws->getStyle("K2:N{$rAkhir}")->getNumberFormat()->setFormatCode('0.0');
+        $ws->getStyle("K2:O{$rAkhir}")->getNumberFormat()->setFormatCode('0.0');
         $ws->getStyle("A2:B{$rAkhir}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $ws->getStyle("E2:I{$rAkhir}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $ws->getStyle("K2:O{$rAkhir}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        foreach (['A' => 5, 'B' => 7, 'C' => 14, 'D' => 28, 'E' => 5, 'F' => 5, 'G' => 5, 'H' => 5, 'I' => 9, 'J' => 44, 'K' => 12, 'L' => 8, 'M' => 8, 'N' => 11, 'O' => 7] as $c => $w) {
+        $ws->getStyle("K2:P{$rAkhir}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        foreach (['A' => 5, 'B' => 7, 'C' => 14, 'D' => 28, 'E' => 5, 'F' => 5, 'G' => 5, 'H' => 5, 'I' => 9, 'J' => 44, 'K' => 12, 'L' => 10, 'M' => 8, 'N' => 8, 'O' => 11, 'P' => 7] as $c => $w) {
             $ws->getColumnDimension($c)->setWidth($w);
         }
         $ws->setAutoFilter("A1:{$akhir}{$rAkhir}");

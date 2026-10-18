@@ -13,6 +13,20 @@
 @section('content')
     <div class="lay rev">
         <div class="side">
+            @if ($kuisAktif->isNotEmpty())
+                <div class="sec-title"><h2>Kuis sedang dibuka</h2></div>
+                <div class="card flat kuis-aktif">
+                    <ul class="list">
+                        @foreach ($kuisAktif as $q)
+                            <li><a class="item" href="{{ route('mhs.kuis', $q) }}">
+                                <span class="ft kuis">KUIS</span>
+                                <span class="tx"><b>Kuis pertemuan {{ $q->pertemuan }}</b><span class="meta">{{ $q->kelas->mata_kuliah }} · Kelas {{ $q->kelas->nama_kelas }}</span></span>
+                                <span class="end small"><b style="display:block">sampai {{ $q->ditutup_at->format('H:i') }}</b><span class="meta">Kerjakan</span></span>
+                            </a></li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
             <div class="sec-title"><h2>Tugas yang perlu dikumpulkan</h2></div>
             <div class="card flat">
                 @if ($tugasAktif->count() || $ujianAktif->count())

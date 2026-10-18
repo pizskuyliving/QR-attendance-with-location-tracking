@@ -29,6 +29,7 @@ class DaftarAsistenController extends Controller
         if (! config('absen.daftar_asisten')) {
             return RegisterController::ditutup('asisten');
         }
+        $request->merge(['email' => mb_strtolower(trim((string) $request->input('email')))]);
         $data = $request->validate([
             'name' => ['required', 'string', 'min:3', 'max:100'],
             'email' => ['required', 'email:rfc', 'max:100', 'unique:users,email'],

@@ -4,15 +4,24 @@
     <div class="row between" style="margin-bottom:12px;align-items:flex-end">
         <div>
             <h1 style="margin:0">Pesan dari dosen</h1>
-            <p class="muted" style="margin:0">Catatan dosen untuk kelas yang kamu ampu. Tandai dibaca setelah ditindaklanjuti.</p>
+            <p class="muted" style="margin:0">Catatan dosen untuk kelas yang kamu ampu. Tandai dibaca setelah ditindaklanjuti, lalu hapus yang sudah tidak perlu.</p>
         </div>
-        @if ($baru)
-            <form method="post" action="{{ route('asisten.pesan.baca-semua') }}">
-                @csrf
-                @if ($kelasId)<input type="hidden" name="kelas" value="{{ $kelasId }}">@endif
-                <button class="btn soft sm">{!! \App\Support\Ikon::svg('cek-bulat') !!} Tandai semua dibaca</button>
-            </form>
-        @endif
+        <div class="row" style="gap:8px">
+            @if ($baru)
+                <form method="post" action="{{ route('asisten.pesan.baca-semua') }}">
+                    @csrf
+                    @if ($kelasId)<input type="hidden" name="kelas" value="{{ $kelasId }}">@endif
+                    <button class="btn soft sm">{!! \App\Support\Ikon::svg('cek-bulat') !!} Tandai semua dibaca</button>
+                </form>
+            @endif
+            @if ($dibaca)
+                <form method="post" action="{{ route('asisten.pesan.hapus-dibaca') }}" data-konfirmasi="Hapus {{ $dibaca }} pesan yang sudah dibaca{{ $kelasId ? ' di kelas ini' : '' }}? Pesan yang belum dibaca tetap ada. Tindakan ini tidak bisa dibatalkan.">
+                    @csrf @method('delete')
+                    @if ($kelasId)<input type="hidden" name="kelas" value="{{ $kelasId }}">@endif
+                    <button class="btn danger sm">Hapus yang sudah dibaca ({{ $dibaca }})</button>
+                </form>
+            @endif
+        </div>
     </div>
 
     <div class="row between" style="margin-bottom:12px;gap:8px">
@@ -36,16 +45,17 @@
     <div class="card pesan-daftar">
         @forelse ($pesan as $c)
             <article class="pesan {{ $c->dibaca_at ? '' : 'baru' }}">
-                <div class="row between" style="gap:8px">
-                    <div class="small muted">
-                        @unless ($c->dibaca_at)<span class="titik-baru" aria-label="Belum dibaca"></span>@endunless
-                        <b>{{ $c->dosen->name }}</b> · <a href="{{ route('asisten.kelas.show', $c->kelas) }}">{{ $c->kelas->label() }}</a> · {{ $c->created_at->translatedFormat('d M Y H:i') }}
-                    </div>
+                <div class="small muted">
+                    @unless ($c->dibaca_at)<span class="titik-baru" aria-label="Belum dibaca"></span>@endunless
+                    <b>{{ $c->dosen->name }}</b> · <a href="{{ route('asisten.kelas.show', $c->kelas) }}">{{ $c->kelas->label() }}</a> · {{ $c->created_at->translatedFormat('d M Y H:i') }}
+                </div>
+                <div class="isi">{{ $c->isi }}</div>
+                <div class="row" style="gap:16px;justify-content:flex-end;margin-top:6px">
                     @unless ($c->dibaca_at)
                         <form method="post" action="{{ route('asisten.pesan.baca', $c) }}">@csrf<button class="link-btn small">Tandai dibaca</button></form>
                     @endunless
+                    <form method="post" action="{{ route('asisten.pesan.hapus', $c) }}" data-konfirmasi="Hapus pesan ini? Pesan juga hilang untuk asisten lain di kelas ini.">@csrf @method('delete')<button class="link-btn small bad">Hapus</button></form>
                 </div>
-                <div class="isi">{{ $c->isi }}</div>
             </article>
         @empty
             <div class="empty">{{ $filter === 'baru' ? 'Tidak ada pesan baru.' : 'Belum ada pesan dari dosen.' }}</div>

@@ -47,7 +47,7 @@
     </div>
 
     <nav class="tabs">
-        @foreach (['absen' => 'Absensi', 'riwayat' => 'Riwayat & Lokasi', 'mahasiswa' => 'Mahasiswa', 'materi' => 'Materi', 'tugas' => 'Tugas', 'ujian' => 'UTS & UAS', 'rekap' => 'Rekap & Nilai', 'log' => 'Log', 'pengaturan' => 'Pengaturan'] as $key => $label)
+        @foreach (['absen' => 'Absensi', 'materi' => 'Materi', 'tugas' => 'Tugas', 'kuis' => 'Kuis', 'ujian' => 'UTS & UAS', 'rekap' => 'Rekap & Nilai', 'mahasiswa' => 'Mahasiswa', 'riwayat' => 'Riwayat & Lokasi', 'log' => 'Log', 'pengaturan' => 'Pengaturan'] as $key => $label)
             <a href="?tab={{ $key }}" class="{{ $tab === $key ? 'on' : '' }}">{{ $label }}</a>
         @endforeach
     </nav>
@@ -269,7 +269,7 @@
                 <thead><tr><th class="c">No</th><th>NPM</th><th class="sticky-col">Nama</th>
                     <th class="c">H</th><th class="c">I</th><th class="c">S</th><th class="c">A</th><th class="c">% Hadir</th>
                     @foreach ($nilai->tugas as $t)<th class="c" title="{{ $t->judul }}"><a href="{{ route('asisten.tugas.show', $t) }}">P{{ $t->pertemuan }}</a><div class="small muted" style="font-weight:400;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $t->judul }}</div></th>@endforeach
-                    <th class="c">Rata tugas</th>
+                    <th class="c">Rata tugas</th><th class="c">Kuis</th>
                     <th class="c">UTS</th><th class="c">UAS</th>
                     <th class="c">Nilai akhir</th><th class="c">Huruf</th></tr></thead>
                 <tbody>
@@ -284,6 +284,7 @@
                             <td class="c">@if ($v !== null){{ $v + 0 }}@elseif (isset($b['kiriman'][$t->id]))<span class="badge I" title="Sudah mengumpulkan, belum dinilai">?</span>@else<span class="muted">–</span>@endif</td>
                         @endforeach
                         <td class="c">{{ $b['rata_tugas'] ?? '–' }}</td>
+                        <td class="c">{{ $b['rata_kuis'] ?? '–' }}</td>
                             @foreach (['uts', 'uas'] as $u)
                                 <td class="c"><input type="number" class="cell nilai-ujian" form="formUjian" name="nilai_{{ $u }}[{{ $b['mahasiswa']->id }}]" min="0" max="100" step="0.01" value="{{ $b[$u] === null ? '' : $b[$u] + 0 }}" aria-label="Nilai {{ strtoupper($u) }} {{ $b['mahasiswa']->nama }}"></td>
                             @endforeach
@@ -291,7 +292,7 @@
                         <td class="c">@if ($b['huruf'])<span class="badge {{ in_array($b['huruf'], ['A', 'B']) ? 'H' : ($b['huruf'] === 'C' ? 'I' : 'A') }}">{{ $b['huruf'] }}</span>@endif</td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ 12 + count($nilai->tugas) }}" class="muted">Belum ada mahasiswa.</td></tr>
+                    <tr><td colspan="{{ 13 + count($nilai->tugas) }}" class="muted">Belum ada mahasiswa.</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -304,8 +305,8 @@
             </form>
         @endif
         <p class="small muted" style="margin-top:8px">% Hadir = jumlah Hadir ÷ {{ $n }} pertemuan; merah = di bawah 75%.
-            Nilai akhir = {{ $kelas->bobot_hadir }}% × persentase hadir + {{ $kelas->bobot_tugas }}% × rata-rata tugas + {{ $kelas->bobot_uts }}% × UTS + {{ $kelas->bobot_uas }}% × UAS. Komponen yang belum ada nilainya dilewati dulu.
-            Tugas yang sudah lewat tenggat tanpa kiriman dihitung 0; <span class="badge I">?</span> = sudah mengumpulkan tapi belum dinilai (belum dihitung); – = belum lewat tenggat.
+            Nilai akhir = {{ $kelas->bobot_hadir }}% × persentase hadir + {{ $kelas->bobot_tugas }}% × rata-rata tugas + {{ $kelas->bobot_kuis }}% × rata-rata kuis + {{ $kelas->bobot_uts }}% × UTS + {{ $kelas->bobot_uas }}% × UAS. Komponen yang belum ada nilainya dilewati dulu.
+            Kuis yang sudah selesai tanpa jawaban (termasuk tidak hadir) dihitung 0, rinciannya di tab <a href="?tab=kuis">Kuis</a>. Tugas yang sudah lewat tenggat tanpa kiriman dihitung 0; <span class="badge I">?</span> = sudah mengumpulkan tapi belum dinilai (belum dihitung); – = belum lewat tenggat.
             Huruf: @foreach (config('absen.huruf') as $h => $batas){{ $h }} ≥ {{ $batas }}@if (! $loop->last), @endif @endforeach (diatur laboran di menu Sistem).</p>
 
         <h2>Rekap per pertemuan</h2>
@@ -385,6 +386,38 @@
                 @empty
                     <p class="muted">Belum ada tugas.</p>
                 @endforelse
+            </div>
+        </div>
+    @endif
+
+    @if ($tab === 'kuis')
+        <div class="grid cols-2">
+            <div class="card">
+                <h2>Buat kuis refleksi</h2>
+                <p class="small muted" style="margin-top:-6px">{{ \App\Models\Kuis::JUMLAH_SOAL }} soal pilihan A/B/C. Simpan sebagai draf, lalu buka di akhir pertemuan. Hanya mahasiswa yang sudah absen hadir di pertemuan itu yang bisa menjawab.</p>
+                @if (count($kuisTerpakai) >= $kelas->jumlah_pertemuan)
+                    <p class="muted">Semua pertemuan sudah punya kuis.</p>
+                @else
+                    <form method="post" action="{{ route('asisten.kuis.store', $kelas) }}">
+                        @csrf
+                        @include('asisten._form_kuis', ['q' => null, 'terpakai' => $kuisTerpakai])
+                        <button class="btn">Simpan kuis</button>
+                    </form>
+                @endif
+            </div>
+            <div class="card">
+                <h2>Daftar kuis</h2>
+                @forelse ($daftarKuis as $q)
+                    @php([$sl, $sc] = $q->status())
+                    <a href="{{ route('asisten.kuis.show', $q) }}" class="row between" style="padding:10px 0;border-top:1px solid var(--line);text-decoration:none;color:inherit;flex-wrap:nowrap">
+                        <div><div><b>Kuis pertemuan {{ $q->pertemuan }}</b> <span class="badge {{ $sc }}">{{ $sl }}</span></div>
+                            <div class="small muted">@if ($q->draf()){{ $q->durasi_menit }} menit · belum dibuka @else dibuka {{ $q->dibuka_at->translatedFormat('d M Y H:i') }} @endif</div></div>
+                        <div class="small c" style="white-space:nowrap">{{ $q->jawaban_count }} menjawab @if ($q->jawaban_count)<br><span class="muted">rata-rata {{ round($q->jawaban_avg_nilai, 1) }}</span>@endif</div>
+                    </a>
+                @empty
+                    <p class="muted">Belum ada kuis.</p>
+                @endforelse
+                <p class="small muted" style="margin-bottom:0">Nilai kuis masuk ke Rekap &amp; Nilai sebagai komponen sendiri (bobot kuis sekarang {{ $kelas->bobot_kuis }}%). Kuis yang tidak dijawab dihitung 0.</p>
             </div>
         </div>
     @endif
@@ -519,7 +552,7 @@
                         <dt>Jadwal</dt><dd>{{ collect([$kelas->hari, $kelas->ruang])->filter()->implode(' · ') ?: '–' }}</dd>
                         <dt>Pertemuan</dt><dd>{{ $kelas->jumlah_pertemuan }}</dd>
                         <dt>Minimal hadir</dt><dd>{{ $kelas->min_hadir }}% (boleh tidak hadir {{ $kelas->maksTidakHadir() }}×)</dd>
-                        <dt>Bobot nilai</dt><dd>hadir {{ $kelas->bobot_hadir }}% · tugas {{ $kelas->bobot_tugas }}% · UTS {{ $kelas->bobot_uts }}% · UAS {{ $kelas->bobot_uas }}%</dd>
+                        <dt>Bobot nilai</dt><dd>hadir {{ $kelas->bobot_hadir }}% · tugas {{ $kelas->bobot_tugas }}% · kuis {{ $kelas->bobot_kuis }}% · UTS {{ $kelas->bobot_uts }}% · UAS {{ $kelas->bobot_uas }}%</dd>
                     </dl>
                     <p class="small muted" style="margin-bottom:0">@if ($bisaAtur)Sebagai laboran kamu bisa mengubahnya di sini atau di menu Matkul.@else Jadwal, jumlah pertemuan, minimal hadir, dan penghapusan kelas diatur dosen. Bobot nilai bisa kamu ubah di tab Rekap &amp; Nilai. Hubungi dosen bila ada yang perlu diubah.@endif</p>
                 @else

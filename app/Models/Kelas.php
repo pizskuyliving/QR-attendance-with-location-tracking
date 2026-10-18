@@ -14,7 +14,7 @@ class Kelas extends Model
 {
     protected $table = 'kelas';
 
-    protected $fillable = ['asisten_id', 'asisten2_id', 'matkul_id', 'nama_kelas', 'mata_kuliah', 'hari', 'ruang', 'jumlah_pertemuan', 'lokasi_lat', 'lokasi_lng', 'radius', 'bobot_hadir', 'bobot_tugas', 'bobot_uts', 'bobot_uas', 'min_hadir', 'tenggat_uts', 'tenggat_uas'];
+    protected $fillable = ['asisten_id', 'asisten2_id', 'matkul_id', 'nama_kelas', 'mata_kuliah', 'hari', 'ruang', 'jumlah_pertemuan', 'lokasi_lat', 'lokasi_lng', 'radius', 'bobot_hadir', 'bobot_tugas', 'bobot_kuis', 'bobot_uts', 'bobot_uas', 'min_hadir', 'tenggat_uts', 'tenggat_uas'];
 
     protected function casts(): array
     {
@@ -121,6 +121,11 @@ class Kelas extends Model
     public function soalUjian(): HasMany
     {
         return $this->hasMany(SoalUjian::class)->orderBy('jenis', 'desc')->orderBy('id');
+    }
+
+    public function kuis(): HasMany
+    {
+        return $this->hasMany(Kuis::class)->orderBy('pertemuan');
     }
 
     public function tugas(): HasMany

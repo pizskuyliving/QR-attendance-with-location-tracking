@@ -35,8 +35,10 @@ class MatkulController extends Controller
         $soal = $kelas->soalUjian()->where('tampil_mahasiswa', true)->get();
         $jawaban = $kelas->jawabanUjian()->where('mahasiswa_id', $mhs->id)->get()->keyBy('jenis');
         $pivot = $kelas->mahasiswa()->whereKey($mhs->id)->first()->pivot;
+        $kuis = $kelas->kuis()->whereNotNull('dibuka_at')->get()->keyBy('pertemuan');
+        $nilaiKuis = \App\Models\KuisJawaban::where('mahasiswa_id', $mhs->id)->whereIn('kuis_id', $kuis->pluck('id'))->get()->keyBy('kuis_id');
 
-        return view('mahasiswa.matkul', compact('kelas', 'materi', 'tugas', 'kiriman', 'absen', 'soal', 'jawaban', 'pivot'));
+        return view('mahasiswa.matkul', compact('kelas', 'materi', 'tugas', 'kiriman', 'absen', 'soal', 'jawaban', 'pivot', 'kuis', 'nilaiKuis'));
     }
 
     public function unduhMateri(Request $request, Materi $materi)

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Asisten;
 use App\Http\Controllers\Controller;
 use App\Models\CatatanDosen;
 use App\Models\Kelas;
+use App\Models\LogAktivitas;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
@@ -38,8 +39,9 @@ class PesanController extends Controller
             ->latest('id')->paginate(20)->withQueryString();
         $daftarKelas = Kelas::diajar($u->id)->orderBy('mata_kuliah')->orderBy('nama_kelas')->get();
         $baru = self::jumlahBaru($u->id);
+        $dibaca = self::milik($u->id)->whereNotNull('dibaca_at')->when($kelasId, fn ($q) => $q->where('kelas_id', $kelasId))->count();
 
-        return view('asisten.pesan', compact('pesan', 'daftarKelas', 'filter', 'kelasId', 'baru'));
+        return view('asisten.pesan', compact('pesan', 'daftarKelas', 'filter', 'kelasId', 'baru', 'dibaca'));
     }
 
     public function baca(Request $request, CatatanDosen $catatan)
@@ -58,5 +60,29 @@ class PesanController extends Controller
             ->update(['dibaca_at' => now()]);
 
         return back()->with('ok', $n ? "$n pesan ditandai sudah dibaca." : 'Tidak ada pesan baru.');
+    }
+
+    /** Hapus satu pesan. Pesan milik kelas, jadi ikut hilang untuk asisten kedua dan dari ringkasan dosen. */
+    public function hapus(Request $request, CatatanDosen $catatan)
+    {
+        abort_unless($catatan->kelas?->diajarOleh($request->user()), 403);
+        LogAktivitas::catat($catatan->kelas, 'pesan_hapus', "{$request->user()->name} menghapus pesan dosen tanggal {$catatan->created_at->format('d/m/Y H:i')}");
+        $catatan->delete();
+
+        return back()->with('ok', 'Pesan dihapus.');
+    }
+
+    /** Bersihkan semua pesan yang sudah dibaca (bisa per kelas). Pesan yang belum dibaca tidak tersentuh. */
+    public function hapusDibaca(Request $request)
+    {
+        $kelasId = $request->integer('kelas') ?: null;
+        $n = self::milik($request->user()->id)->whereNotNull('dibaca_at')
+            ->when($kelasId, fn ($q) => $q->where('kelas_id', $kelasId))
+            ->delete();
+        if ($n) {
+            LogAktivitas::catat($kelasId ? Kelas::find($kelasId) : null, 'pesan_hapus', "{$request->user()->name} menghapus {$n} pesan dosen yang sudah dibaca");
+        }
+
+        return back()->with('ok', $n ? "{$n} pesan yang sudah dibaca dihapus." : 'Tidak ada pesan yang sudah dibaca.');
     }
 }

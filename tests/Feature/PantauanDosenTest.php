@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Mail\Pemberitahuan;
 use App\Models\Absensi;
+use App\Models\CatatanDosen;
 use App\Models\Kelas;
+use App\Models\LogAktivitas;
 use App\Models\Mahasiswa;
 use App\Models\Matkul;
 use App\Models\User;
@@ -207,6 +209,29 @@ class PantauanDosenTest extends TestCase
         $this->actingAs($asisten)->get(route('asisten.pesan', ['lihat' => 'baru']))->assertSee('Tidak ada pesan baru.');
         $this->actingAs($asisten)->get(route('asisten.dashboard'))->assertDontSee('menu-hitung', false);
         $this->actingAs($dosen)->get(route('asisten.matkul.index'))->assertSee('sudah dibaca');
+    }
+
+    public function test_asisten_hapus_pesan_satu_dan_yang_sudah_dibaca(): void
+    {
+        [$dosen, $asisten, $kelas] = $this->siapkan();
+        $buat = fn (string $isi, bool $dibaca) => CatatanDosen::forceCreate(['kelas_id' => $kelas->id, 'dosen_id' => $dosen->id, 'isi' => $isi, 'dibaca_at' => $dibaca ? now() : null]);
+        $lama1 = $buat('Lama satu', true);
+        $buat('Lama dua', true);
+        $baru = $buat('Masih baru', false);
+
+        $this->actingAs($asisten)->get(route('asisten.pesan'))->assertSee('Hapus yang sudah dibaca (2)');
+
+        // orang lain tidak bisa menghapus
+        $orang = User::create(['name' => 'Asisten Z', 'email' => 'z@kampus.ac.id', 'password' => 'rahasia123', 'role' => 'asisten']);
+        $this->actingAs($orang)->delete(route('asisten.pesan.hapus', $baru))->assertForbidden();
+        $this->actingAs($orang)->delete(route('asisten.pesan.hapus-dibaca'))->assertSessionHas('ok', 'Tidak ada pesan yang sudah dibaca.');
+        $this->assertSame(3, CatatanDosen::count());
+
+        $this->actingAs($asisten)->delete(route('asisten.pesan.hapus', $lama1))->assertSessionHas('ok', 'Pesan dihapus.');
+        $this->delete(route('asisten.pesan.hapus-dibaca'))->assertSessionHas('ok', '1 pesan yang sudah dibaca dihapus.');
+        $this->assertSame([$baru->id], CatatanDosen::pluck('id')->all()); // yang belum dibaca tetap ada
+        $this->assertSame(2, LogAktivitas::where('aksi', 'pesan_hapus')->count());
+        $this->get(route('asisten.pesan'))->assertSee('Masih baru')->assertDontSee('Hapus yang sudah dibaca');
     }
 
     public function test_radius_kosong_memakai_bawaan_dan_pesan_berbahasa_indonesia(): void
